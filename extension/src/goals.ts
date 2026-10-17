@@ -20,6 +20,9 @@ const errorTypes = new Set(['text_overview_error']);
 export class Goals implements Disposable {
   private updates = new EventEmitter<void>();
   readonly onDidUpdate = this.updates.event;
+  private decorated = new EventEmitter<string>();
+  // The URI of every stored PIDE/decoration delta, for editor painters.
+  readonly onDidDecorate = this.decorated.event;
   private generation = 0;
   private caret?: Caret;
   private document?: TextDocument;
@@ -84,6 +87,7 @@ export class Goals implements Disposable {
             this.decorationTimer = setTimeout(() => this.refreshDecorations(message.uri), 250);
           }
         }
+        this.decorated.fire(message.uri);
         this.updates.fire();
       }),
     );
@@ -257,6 +261,16 @@ export class Goals implements Disposable {
     return this.ranges.get(document.uri.toString())?.get(type) ?? [];
   }
 
+  // A closed document's markup must not be painted onto a later reopening.
+  forget(uri: string): void {
+    this.decorations.delete(uri);
+    this.ranges.delete(uri);
+    this.badRanges.delete(uri);
+    this.versions.delete(uri);
+    this.confirmedVersions.delete(uri);
+    this.annotatedVersions.delete(uri);
+  }
+
   documentStatus(document: TextDocument) {
     const processing = this.processing(document);
     const uri = document.uri.toString();
@@ -290,5 +304,6 @@ export class Goals implements Disposable {
     this.unavailable();
     for (const subscription of this.subscriptions) subscription.dispose();
     this.updates.dispose();
+    this.decorated.dispose();
   }
 }
