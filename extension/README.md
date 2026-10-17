@@ -132,6 +132,9 @@ Colours come from your VS Code theme and re-skin when it changes.
   description; click for the side panel (status, dependencies, used-by, file:line,
   blueprint label, paper reference); double-click, or click the location, to open the
   theory at that line. Missing nodes explain that they exist only in `blueprint.yaml`.
+  Only files under a workspace folder, the export's repo root (the parent of `out/`)
+  or `ISABELLE_HOME` are opened: `dag.json` is data, so a path that points elsewhere
+  is refused and logged.
 - The filter box takes `status:sorry`, `theory:Apery.Bounds`, `label:B3` or free text;
   Escape clears it. Open holes carry a `next hole · #k` badge in the `next_holes` order
   (holes resting on no other hole first, then leverage, then the shortest statement).
@@ -156,7 +159,8 @@ For a demo without Isabelle, run **Open Replay Snapshot…** and pick
 B1–B12 part-way through a session, with `claims.json` next to it); rewriting that
 file replays the next step. `bash scripts/check_proofmap.sh` runs the pure unit
 tests (`extension/test/unit_proofmap.cjs`) and then the viewer inside stock VS Code:
-snapshot, live rewrite through the watcher, open file:line and the pop-out command.
+snapshot, live rewrite through the watcher, open file:line (and the refusal of a
+path outside the trusted roots) and the pop-out command.
 `node extension/test/perf_proofmap.cjs` lays out a synthetic 500-node / 740-edge graph
 in Playwright's Chromium under the webview's CSP and writes light and dark
 screenshots to `.dev-host/`. The webview bundle (`npm run bundle`, Cytoscape +

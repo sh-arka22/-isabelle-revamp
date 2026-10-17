@@ -3,6 +3,7 @@
 // but the extension's activation still starts the language server as usual.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 const vscode = require('vscode');
 
@@ -125,6 +126,31 @@ exports.run = async function () {
     await pause(300);
     assert.equal(api.getProofMapState().lastOpened.id, 'Apery.Bounds.linear_form_small');
     console.log('PASS: select recorded; malformed and missing-node requests are ignored safely');
+
+    // dag.json is data: a file path that escapes the workspace, the export's repo root and
+    // ISABELLE_HOME (absolute, or through ../) must be refused even though the file exists.
+    const outsideDir = fs.mkdtempSync(path.join(os.tmpdir(), 'proofmap-outside-'));
+    const outside = path.join(outsideDir, 'Outside.thy');
+    fs.writeFileSync(outside, 'theory Outside imports Main begin end\n');
+    const escaping = JSON.parse(fs.readFileSync(liveDag, 'utf8'));
+    escaping.nodes.find(n => n.id === 'Apery.Bounds.tail_bound').file = outside;
+    escaping.nodes.find(n => n.id === 'Apery.Main.apery_series').file = path.relative(root, outside);
+    assert(path.relative(root, outside).startsWith('..'));
+    fs.writeFileSync(liveDag, JSON.stringify(escaping, null, 1));
+    await until('escaping paths loaded', () => api.getProofMapState().nodes.find(n => n.id === 'Apery.Bounds.tail_bound').file === outside, 15000);
+    assert(!api.getProofMapState().log.some(line => /refused to open/.test(line)));
+    for (const id of ['Apery.Bounds.tail_bound', 'Apery.Main.apery_series']) await api.proofMapMessage({ type: 'open', id });
+    await pause(300);
+    state = api.getProofMapState();
+    assert.equal(state.lastOpened.id, 'Apery.Bounds.linear_form_small');
+    // The state's log is the Output channel's last 200 lines; the refusals are its newest entries.
+    const refusals = state.log.filter(line => /refused to open/.test(line));
+    assert.equal(refusals.length, 2, state.log.slice(-10).join('\n'));
+    assert(refusals.some(line => line.includes(outside) && line.includes('Apery.Bounds.tail_bound')), refusals.join('\n'));
+    assert(refusals.some(line => line.includes('Apery.Main.apery_series')), refusals.join('\n'));
+    assert(!vscode.workspace.textDocuments.some(d => d.uri.fsPath === outside), 'the outside file must not be opened');
+    fs.rmSync(outsideDir, { recursive: true, force: true });
+    console.log('PASS: open requests whose file escapes the workspace, the export root and ISABELLE_HOME are refused');
 
     // 5. Pop-out command does not throw (headless: the move may be a no-op); fit/reload commands run.
     await vscode.commands.executeCommand('isabelleRevamp.showProofMapInNewWindow');

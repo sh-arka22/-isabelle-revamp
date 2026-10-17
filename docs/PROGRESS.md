@@ -433,10 +433,27 @@
   `contracts/examples/claims.json` describe the advisory sidecar. Panel tab icons in
   `extension/media/`. Dependencies: `cytoscape`, `cytoscape-dagre` (runtime),
   `esbuild`, `@types/cytoscape` (dev); lockfile committed; notices added.
-- **Passed:** `node extension/test/unit_proofmap.cjs` (11 checks: parser tolerance,
+- **Verified (independent pass):** rebuilt `out/` and `dist/` from scratch
+  (`npm run compile` clean), reran the unit tests, `scripts/check_proofmap.sh`
+  and `scripts/check_m3.sh` headless, grepped `extension/` and the bundle for CDN
+  URLs and `innerHTML` (none), checked the fixture against the C1 shape of PLAN
+  §6.2 (ids, theory/file agreement, statuses against the transitive rule,
+  `statement_sha1` = SHA-1 of each statement, edge kinds against target kinds) and
+  the claims fixture and example against `contracts/claims.schema.json` (valid;
+  seven malformed variants rejected). Fixed: file:line opening took any path from
+  `dag.json`, absolute or through `../`; `src/map/filePaths.ts` now resolves the
+  node's file against the workspace folders, the export's repo root and
+  `ISABELLE_HOME` (from the executable's `getenv`, `src/symbols.ts`) and refuses,
+  with a warning and an Output line, anything whose real path lies outside all of
+  them (unit test with a fake lookup; `proofmap.cjs` rewrites the live export with
+  an absolute and a `../` escape and checks neither opens). The CSP's `img-src`
+  no longer allows `https:`; the fixture's provenance note moved to
+  `extension/test/fixtures/proofmap/README.md` so the JSON is strictly C1-shaped.
+- **Passed:** `node extension/test/unit_proofmap.cjs` (12 checks: parser tolerance,
   ranking on the fixture — `linear_form_small` #1 with leverage 3, `double_sum_swap`
   #2, `apery_series_limit` #3 resting on two holes — ordered deterministic diffs,
-  regressions, claims, symbols, protocol round-trips, CSP/document shape).
+  regressions, claims, symbols, protocol round-trips, file containment, CSP/document
+  shape).
   `scripts/check_proofmap.sh` with the headless stock VS Code: the five commands
   registered; the replay snapshot loaded 12 nodes with the expected counts, ranking
   and the sidecar claim; the webview laid the graph out inside the real webview

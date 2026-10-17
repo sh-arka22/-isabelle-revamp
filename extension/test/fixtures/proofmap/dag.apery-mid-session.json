@@ -4,7 +4,6 @@
   "session": "Apery",
   "git_sha": "3f9c2ab7e1d04c5b8a6e9f0123456789abcdef01",
   "generated_at": "2026-10-17T11:52:03Z",
-  "_fixture": "Hand-derived replay snapshot in the contract C1 shape (PLAN.md §6.2): the twelve Apéry nodes B1–B12 of PLAN §4 part-way through a session. Statuses are chosen to exercise every legend entry except oracle; statement_sha1 values are the SHA-1 of the statement text. Not produced by revamp map export.",
   "nodes": [
     {
       "id": "Apery.Telescoping.apery_term",

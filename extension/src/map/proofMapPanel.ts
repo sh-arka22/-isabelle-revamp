@@ -9,12 +9,13 @@ import {
   commands, Disposable, ExtensionContext, OutputChannel, Range, Selection, TextEditorRevealType, Uri,
   ViewColumn, WebviewPanel, window, workspace,
 } from 'vscode';
-import { symbolTable } from '../symbols';
+import { isabelleHome, symbolTable } from '../symbols';
 import { changedNodeIds, diffClaims, diffDags, MapEvent } from './core/dagDiff';
 import { rankHoles, RankedHole } from './core/dagRank';
 import { FeedEntry, HostMessage, LayoutReport, MapSource, MapViewState, parseWebviewMessage } from './core/protocol';
 import { Claim, Dag, DagEdge, DagNode, emptyCounts, parseClaims, parseDag, StatusCounts, statusCounts } from './core/types';
 import { DagWatcher, WatchResult } from './dagWatcher';
+import { resolveWithin } from './filePaths';
 import { proofMapHtml } from './htmlTemplate';
 
 export const NODE_BUDGET = 500;
@@ -301,7 +302,14 @@ export class ProofMapPanel implements Disposable {
   async openNode(id: string): Promise<Uri | undefined> {
     const node = this.dag?.nodes.find(candidate => candidate.id === id);
     if (!node) { this.output.appendLine(`open: unknown node ${id}`); return undefined; }
-    const file = this.resolveFile(node.file);
+    const { path: file, refused } = resolveWithin(node.file, this.fileRoots());
+    if (refused) {
+      // dag.json is data: a path outside every trusted root is never opened, whatever the node says.
+      const message = `ProofMap: refused to open ${node.file} for ${id}: it lies outside the workspace, the export's repo root and ISABELLE_HOME.`;
+      this.output.appendLine(message);
+      void window.showWarningMessage(message);
+      return undefined;
+    }
     if (node.status === 'missing') {
       const message = `${id} exists only in blueprint.yaml (no Isabelle fact yet).`;
       this.output.appendLine(message);
@@ -324,16 +332,17 @@ export class ProofMapPanel implements Disposable {
     return uri;
   }
 
-  /** Repo-relative paths resolve against the workspace folders, then the export's repo root (parent of out/). */
-  private resolveFile(file: string): string | undefined {
-    if (isAbsolute(file)) return existsSync(file) ? file : undefined;
+  /**
+   * Roots a node's file may be opened from, in lookup order: the workspace
+   * folders, the export's repo root (parent of out/) and ISABELLE_HOME. A
+   * repo-relative path resolves against each in turn; see filePaths.ts.
+   */
+  private fileRoots(): string[] {
     const roots = (workspace.workspaceFolders ?? []).map(folder => folder.uri.fsPath);
     if (this.source) roots.push(dirname(dirname(this.source.path)));
-    for (const root of roots) {
-      const candidate = join(root, file);
-      if (existsSync(candidate)) return candidate;
-    }
-    return undefined;
+    const home = isabelleHome();
+    if (home) roots.push(home);
+    return roots;
   }
 
   // ---------- commands and API ----------

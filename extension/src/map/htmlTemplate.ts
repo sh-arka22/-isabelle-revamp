@@ -11,7 +11,7 @@ export interface ProofMapHtmlOptions {
 }
 
 export function proofMapCsp({ nonce, cspSource }: Pick<ProofMapHtmlOptions, 'nonce' | 'cspSource'>): string {
-  return `default-src 'none'; img-src ${cspSource} https: data:; style-src ${cspSource}; font-src ${cspSource}; script-src 'nonce-${nonce}'`;
+  return `default-src 'none'; img-src ${cspSource} data:; style-src ${cspSource}; font-src ${cspSource}; script-src 'nonce-${nonce}'`;
 }
 
 export function proofMapHtml(options: ProofMapHtmlOptions): string {

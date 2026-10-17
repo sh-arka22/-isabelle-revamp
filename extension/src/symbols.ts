@@ -6,6 +6,7 @@ import { promisify } from 'node:util';
 
 // Bundled fallback; the installed distribution replaces this at startup.
 let symbols: Readonly<Record<string, string>> = codes;
+let isabelleHomeDir: string | undefined;
 const superscripts: Readonly<Record<string, string>> = Object.fromEntries(
   [...'0123456789+-=()abcdefghijklmnopqrstuvwxyz'].map((char, i) =>
     [char, [...'⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾ᵃᵇᶜᵈᵉᶠᵍʰⁱʲᵏˡᵐⁿᵒᵖ?ʳˢᵗᵘᵛʷˣʸᶻ'][i]])
@@ -26,7 +27,9 @@ export function parseSymbolTable(source: string): Record<string, string> {
 
 export async function loadSymbols(executable: string): Promise<{ path: string; count: number }> {
   const { stdout } = await promisify(execFile)(executable, ['getenv', '-b', 'ISABELLE_HOME'], { timeout: 15000 });
-  const path = join(stdout.trim(), 'etc/symbols');
+  const home = stdout.trim();
+  if (home) isabelleHomeDir = home;
+  const path = join(home, 'etc/symbols');
   const loaded = parseSymbolTable(await readFile(path, 'utf8'));
   if (!Object.keys(loaded).length) throw new Error('No Unicode assignments in ' + path);
   symbols = loaded;
@@ -35,6 +38,9 @@ export async function loadSymbols(executable: string): Promise<{ path: string; c
 
 /** The table in use: the installed etc/symbols once loaded, else the bundled copy. */
 export function symbolTable(): Readonly<Record<string, string>> { return symbols; }
+
+/** ISABELLE_HOME as the configured executable reported it, else the environment's; undefined before either is known. */
+export function isabelleHome(): string | undefined { return isabelleHomeDir ?? (process.env.ISABELLE_HOME || undefined); }
 
 export function unicodeSymbols(text: string): string {
   return text.replace(/\\<(\^?[A-Za-z][A-Za-z0-9_]*)>/g,

@@ -9,6 +9,7 @@ const { rankHoles } = require('../out/map/core/dagRank');
 const { mapSymbols, hasRawSymbols, bundledSymbols } = require('../out/map/core/symbols');
 const { encodeMessage, parseWebviewMessage, parseHostMessage } = require('../out/map/core/protocol');
 const { proofMapHtml, proofMapCsp } = require('../out/map/htmlTemplate');
+const { resolveWithin, isInside } = require('../out/map/filePaths');
 
 const fixtureDir = path.join(__dirname, 'fixtures/proofmap');
 const fixtureText = fs.readFileSync(path.join(fixtureDir, 'dag.apery-mid-session.json'), 'utf8');
@@ -195,6 +196,24 @@ check('protocol round-trips every message kind and rejects malformed ones', () =
   assert.deepEqual(parseWebviewMessage({ type: 'open', id: 'x', __proto__: null, extra: 1 }), { type: 'open', id: 'x' });
 });
 
+// ---------- opening files ----------
+check('resolveWithin: files open only under the workspace, the export root or ISABELLE_HOME; absolute, ../ and symlink escapes are refused', () => {
+  const files = new Set(['/ws/thys/Apery/Bounds.thy', '/repo/thys/Apery/Bounds.thy', '/isa/src/HOL/Main.thy', '/etc/passwd', '/ws/link.thy', '/wsx/secret.thy']);
+  const lookup = { exists: p => files.has(p), realpath: p => p === '/ws/link.thy' ? '/etc/passwd' : p };
+  const roots = ['/ws', '/repo', '/isa'];
+  assert.deepEqual(resolveWithin('thys/Apery/Bounds.thy', roots, lookup), { path: '/ws/thys/Apery/Bounds.thy' });
+  assert.deepEqual(resolveWithin('thys/Apery/Bounds.thy', ['/nowhere', '/repo'], lookup), { path: '/repo/thys/Apery/Bounds.thy' });
+  assert.deepEqual(resolveWithin('/isa/src/HOL/Main.thy', roots, lookup), { path: '/isa/src/HOL/Main.thy' });
+  assert.deepEqual(resolveWithin('/etc/passwd', roots, lookup), { refused: '/etc/passwd' });
+  assert.deepEqual(resolveWithin('../etc/passwd', roots, lookup), { refused: '/etc/passwd' });
+  assert.deepEqual(resolveWithin('/ws/../etc/passwd', roots, lookup), { refused: '/etc/passwd' });
+  assert.deepEqual(resolveWithin('link.thy', roots, lookup), { refused: '/ws/link.thy' });
+  assert.deepEqual(resolveWithin('/wsx/secret.thy', roots, lookup), { refused: '/wsx/secret.thy' });   // a sibling that shares the prefix
+  assert.deepEqual(resolveWithin('missing.thy', roots, lookup), {});
+  assert.deepEqual(resolveWithin('thys/Apery/Bounds.thy', [], lookup), {});
+  assert(isInside('/ws', '/ws') && isInside('/ws', '/ws/a/b') && !isInside('/ws', '/wsx/a') && !isInside('/ws', '/') && !isInside('/ws', '/ws/../etc'));
+});
+
 // ---------- document ----------
 check('webview document: nonce CSP without inline styles, static markup only, expected ids', () => {
   const html = proofMapHtml({ nonce: 'abc123', cspSource: 'https://cdn.example', scriptUri: 'https://cdn.example/map.js', styleUri: 'https://cdn.example/map.css' });
@@ -203,6 +222,7 @@ check('webview document: nonce CSP without inline styles, static markup only, ex
   assert(csp.startsWith("default-src 'none'"));
   assert(csp.includes("script-src 'nonce-abc123'"));
   assert(!csp.includes('unsafe-inline') && !csp.includes('unsafe-eval'));
+  assert(!/img-src[^;]*\shttps:(\s|;|$)/.test(csp), 'img-src must not allow the bare https: scheme (any host)');
   assert(!/<style/.test(html) && !/ style="/.test(html) && !/<script(?! nonce=)/.test(html));
   assert(!html.includes('http://') && !/https:\/\/(?!cdn\.example)/.test(html));
   for (const id of ['toolbar', 'fit', 'relayout', 'reload', 'filter', 'follow', 'snapshot', 'newwindow', 'graph', 'tooltip',
