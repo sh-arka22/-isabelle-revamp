@@ -8,6 +8,7 @@ fully checked proof that sqrt 2 is irrational in `examples/Sqrt2.thy`, with no
 M6 adds a theme-aware sidebar, Unicode output and a theory/check-status header.
 M7 adds **Isabelle Swarm**, a live card board for six proof steps filled through MCP.
 M8 adds **Ask Isabelle**: streamed Claude Code replies and proof edits through those same tools.
+The goals sidebar then gained Isabelle's output colours, facts, messages and a done state.
 
 ## Try the extension in under five minutes
 
@@ -113,6 +114,29 @@ streaming, Stop, missing-tool help, webview behavior and earlier regressions.
 `M8_LIVE=1 bash scripts/check_m8.sh` also runs the two real Claude acceptance
 requests with your configured account/model, temporarily editing and restoring
 `Demo.thy`. Ask uses only the installed Claude Code CLI and the seven MCP tools.
+
+## Goals sidebar: colours, facts, messages (Alex's feedback 8, 12–14)
+
+The **Isabelle Goals** view shows the header `Sqrt2.thy:12:5` (caret line and
+column, one-based) with a status badge, then four collapsible sections whose
+state is remembered: **Goal** (the proof state in Isabelle's own colours —
+free, bound and skolem variables, keywords, numerals — with entity links that
+open the defining theory on click, and a green **✓ No goals — this step is
+complete** banner when a step is finished), **Facts** (the `this:` / `using
+this:` lines of the state), **Messages** (the command's output: `value` and
+`thm` results, `try0` suggestions, warnings and errors, each with an icon and
+a count badge) and **Ask**. A position outside any proof shows **Not in a
+proof**. The goal wraps to the panel's width: the webview reports its column
+count and the extension passes it to the server as the pretty-print margin.
+Colours follow the official Isabelle/VSCode palette for light and dark themes
+and the theme's own colours in high contrast.
+
+`bash scripts/check_goals.sh` runs the pure checks
+(`node extension/test/unit_goals.cjs`, `node extension/test/unit_goalsView.cjs`;
+the first reads real server output from `extension/test/fixtures/output/`) and
+then a stock VS Code host with the real server. Server HTML is never inserted
+unsanitised: see `src/outputHtml.ts` and the notes in
+[PROTOCOL_NOTES.md](../docs/PROTOCOL_NOTES.md).
 
 ## Run the goal probe
 

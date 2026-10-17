@@ -27,6 +27,7 @@ export class Goals implements Disposable {
   readonly onDidUpdate = this.updates.event;
   private generation = 0;
   private sent = -1;
+  private dynamicState?: boolean;
   private caret?: Caret;
   private document?: TextDocument;
   private timer?: ReturnType<typeof setTimeout>;
@@ -58,10 +59,11 @@ export class Goals implements Disposable {
         const messages = splitMessages(content);
         this.messages = messages.filter(message => message.kind !== 'state');
         // No state_message after this caret's update: the command has no proof
-        // state, so the tagged query would never answer. A later tagged reply
-        // still replaces this.
-        if (this.sent === this.generation && this.confirmed === undefined
-          && !messages.some(message => message.kind === 'state')) this.acceptState(noState);
+        // state, so the tagged query would never answer. Only a settled
+        // document is conclusive (an unprocessed command prints nothing yet);
+        // a later tagged reply still replaces this.
+        if (this.sent === this.generation) this.dynamicState = messages.some(message => message.kind === 'state');
+        if (this.dynamicState === false && this.confirmed === undefined && !this.busy()) this.acceptState(noState);
         else this.render();
       }),
       client.onNotification('PIDE/state_output', (message: StateOutput) => {
@@ -91,6 +93,10 @@ export class Goals implements Disposable {
           }
         }
         if (message.uri === this.caret?.uri) {
+          if (!this.busy() && this.confirmed === undefined && this.panel !== undefined) {
+            if (this.dynamicState === false) this.acceptState(noState);
+            else this.settleSoon();
+          }
           this.render();
           clearTimeout(this.decorationTimer);
           // force_decorations does not advance the server's delta baseline.
@@ -124,11 +130,12 @@ export class Goals implements Disposable {
     const generation = ++this.generation;
     clearTimeout(this.timer);
     clearTimeout(this.deadline);
-    clearTimeout(this.settled);
+    this.clearSettled();
     clearTimeout(this.decorationTimer);
     this.releasePanel();
     this.confirmed = undefined;
     this.messages = [];
+    this.dynamicState = undefined;
     this.requestedAt = Date.now();
     this.publish({ phase: next ? 'checking' : 'idle', text: '', errors: [] });
     if (!this.available) return;
@@ -140,14 +147,29 @@ export class Goals implements Disposable {
     this.deadline = setTimeout(() => {
       if (generation === this.generation) this.render();
     }, 10000);
-    // Identical dynamic output is not re-sent, so a second position without a
-    // proof state gives no signal at all. Once the document is settled and the
-    // query is open, a short wait without a tagged reply means "no state".
+  }
+
+  private busy(): boolean {
+    const flags = this.caret && this.decorations.get(this.caret.uri);
+    return [...busyTypes].some(type => flags?.get(type));
+  }
+
+  // Identical dynamic output is not re-sent, so a second position without a
+  // proof state gives no signal at all. Once the document is settled and the
+  // query is open, a short wait without a tagged reply means "no state".
+  private settleSoon(): void {
+    if (this.settled !== undefined) return;
+    const generation = this.generation;
     this.settled = setTimeout(() => {
-      if (generation !== this.generation || this.confirmed !== undefined || this.panel === undefined) return;
-      const flags = this.decorations.get(next.uri);
-      if (![...busyTypes].some(type => flags?.get(type))) this.acceptState(noState);
+      this.settled = undefined;
+      if (generation !== this.generation || this.confirmed !== undefined || this.panel === undefined || this.busy()) return;
+      this.acceptState(noState);
     }, 3000);
+  }
+
+  private clearSettled(): void {
+    clearTimeout(this.settled);
+    this.settled = undefined;
   }
 
   setDiagnostics(uri: string, diagnostics: Diagnostic[]): void {
@@ -185,6 +207,7 @@ export class Goals implements Disposable {
         return;
       }
       this.panel = state_id;
+      if (!this.busy()) this.settleSoon();
       if (this.margin !== defaultMargin) {
         void this.client.sendNotification('PIDE/state_set_margin', { id: state_id, margin: this.margin }).catch(() => {});
       }
@@ -204,7 +227,7 @@ export class Goals implements Disposable {
     this.confirmed = content;
     if (this.caret) this.confirmedVersions.set(this.caret.uri, this.caret.version);
     clearTimeout(this.deadline);
-    clearTimeout(this.settled);
+    this.clearSettled();
     this.render();
     if (this.caret) {
       this.refreshDecorations(this.caret.uri);
@@ -256,7 +279,7 @@ export class Goals implements Disposable {
     ++this.generation;
     clearTimeout(this.timer);
     clearTimeout(this.deadline);
-    clearTimeout(this.settled);
+    this.clearSettled();
     clearTimeout(this.decorationTimer);
     this.confirmed = undefined;
     this.messages = [];

@@ -50,7 +50,7 @@ range ends are exclusive. A BMP symbol uses one column; an emoji uses two.
 | --- | --- |
 | `open(file)` | Opens the editor and returns its current `text`, `version`, and `saved` flag. Includes unsaved user edits. |
 | `edit(file, start_line, start_col, end_line, end_col, text)` | Replaces the range through VS Code, saves the buffer, and returns its new version/status. Uses the editor's undo history. A stale client version is rejected; read with `open` immediately before editing. |
-| `goals_at(file, line, col)` | Moves the visible cursor to a proof command and waits up to 30 seconds. Returns Unicode `text` identical to the sidebar, plus `phase`, diagnostics, the file/version/position, `theory` and `checkStatus`. |
+| `goals_at(file, line, col)` | Moves the visible cursor to a proof command and waits up to 30 seconds. Returns Unicode `text` identical to the sidebar, plus `phase`, diagnostics, the file/version/position, `theory`, `checkStatus`, the chained `facts` (texts) and the command's `messages` (`kind` info/warning/error and `text`: `value`/`thm` output, `try0` suggestions, errors). At a command without a proof state (`value`, `thm`, a blank line) `text` is empty and `messages` carry the output. The text wraps at the sidebar's current width. |
 | `errors(file)` | Returns error messages/ranges, `has_errors`, and `complete`. `complete=false` means an empty or partial list is inconclusive. |
 | `status()` | Returns per-file checking/error/unfinished/fully_checked states and an aggregate `fully_checked` flag for all open theory tabs. |
 | `sorry_positions(file)` | Returns server-marked `[start_line,start_col,end_line,end_col]` ranges and a `complete` flag. Comments and strings containing the word are ignored. |

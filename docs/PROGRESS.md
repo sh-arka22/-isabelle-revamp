@@ -401,3 +401,51 @@
 - **Would do differently:** enable formula completions at language registration
   time and separate source representation from display from the first editor
   milestone.
+
+## 2026-10-17 — Goals sidebar: colour, messages, facts, done state (Alex's 8, 12, 13, 14)
+
+- **Changed:** the sidebar now renders Isabelle's own output markup instead of
+  stripping it. `outputHtml.ts` is a tokenizer-based sanitiser (allow-listed
+  elements and class names, entity links as `data-link` spans, `⇧c`/`⇩c` as
+  `sup`/`sub` when no glyph exists); `viewTheme.ts` colours every allowed class
+  with the official light/dark palette (ported from yfprojects' `colors.ts`,
+  credited in the notices) and falls back to theme variables in high contrast.
+  The view has a header line `Sqrt2.thy:12:5` with a coloured status badge,
+  then collapsible **Goal**, **Facts** (`this:` / `using this:` lines, split by
+  the pure `stateParts.ts`), **Messages** (writeln/warning/error output of the
+  command, with an icon, a left border and a count) and **Ask** sections, with
+  the collapse state persisted in the webview state. `No subgoals!` shows a
+  green **✓ No goals — this step is complete** banner; a settled position
+  without a state shows **Not in a proof**. The panel width is reported to the
+  server as the pretty-print margin (`PIDE/output_set_margin`,
+  `PIDE/state_set_margin`). `getGoalState()` keeps `phase/text/errors/theory/
+  checkStatus` and adds `html`, `goalHtml`, `facts`, `messages`, `position`;
+  `goals_at` returns the facts and message texts without HTML. Extension
+  points for the next steps: `setHeaderActions()` for header buttons,
+  `setMessageActions()` for per-message controls, and `GoalsView.onAction`
+  for their `data-action` clicks.
+- **Passed:** `node extension/test/unit_goals.cjs` (real server fixtures,
+  hostile input, facts, done detection, view model) and
+  `node extension/test/unit_goalsView.cjs` (the webview script in a small DOM:
+  sections, persisted collapse, sanitised updates, link/action messages, width
+  report). `bash scripts/check_goals.sh` ran stock VS Code against the real
+  server: coloured free variable, facts at `then show`, `value` output in
+  Messages, the done banner, `try0` sendback messages, the blank-line note,
+  margin 40/200 re-wrapping, and a failed method's error message. The existing
+  M3 suite passes unchanged.
+- **Discovered:** `PIDE/state_output` never answers at a command without a
+  proof state, and identical dynamic output is deduplicated; with
+  `editor_output_state=true` the presence of a `state_message` in the dynamic
+  output tells the two cases apart, so that option stays on and the output is
+  split textually. Links are `file:/path#line` with one slash. Details and the
+  `editor_output_state=false` comparison are in `PROTOCOL_NOTES.md`. The
+  server only executes commands within `vscode_caret_perspective` (50) lines
+  of the caret, so a theory's `end` beyond that stayed unprocessed and the
+  badge stuck at `checking…` until the caret moved; the launch options now
+  add `-o vscode_caret_perspective=0` so the whole open theory is checked.
+- **Test expectations changed on purpose:** `askView.cjs` now asserts that the
+  Ask section comes after the header (it was first), and runs the webview
+  script in the shared `fakeDom.cjs` tree instead of a flat element map.
+- **Next:** pin/pause buttons in the header area and copy-to-editor on
+  messages (Alex's 15 and 16) through the hooks above; a `sendback` click
+  could then insert `by simp` directly.

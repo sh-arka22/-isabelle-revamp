@@ -72,6 +72,9 @@ export async function activate(context: ExtensionContext) {
     '-o', 'editor_output_state=true',
     '-o', 'vscode_pide_extensions=true',
     '-o', 'vscode_unicode_symbols_edits=false',
+    // Process the whole open theory, not only ±50 lines around the caret:
+    // the status badge and "fully checked" must not depend on the caret.
+    '-o', 'vscode_caret_perspective=0',
   ];
   const server: ServerOptions = { command: executable, args };
 
