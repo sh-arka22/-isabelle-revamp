@@ -9,7 +9,7 @@
   "engines": { "vscode": "^1.104.0" },
   "categories": ["Programming Languages"],
   "main": "./out/extension.js",
-  "activationEvents": ["onLanguage:isabelle", "onView:isabelleRevamp.goals", "onView:isabelleRevamp.swarm"],
+  "activationEvents": ["onLanguage:isabelle", "onView:isabelleRevamp.goals", "onView:isabelleRevamp.swarm", "onView:isabelleRevamp.sledgehammer"],
   "scripts": {
     "compile": "tsc -p .",
     "vscode:prepublish": "npm run compile"
@@ -18,15 +18,26 @@
     "views": {
       "explorer": [
         { "id": "isabelleRevamp.goals", "name": "Isabelle Goals", "type": "webview" },
-        { "id": "isabelleRevamp.swarm", "name": "Isabelle Swarm", "type": "webview" }
+        { "id": "isabelleRevamp.swarm", "name": "Isabelle Swarm", "type": "webview" },
+        { "id": "isabelleRevamp.sledgehammer", "name": "Isabelle Sledgehammer", "type": "webview" }
       ]
     },
     "commands": [
       { "command": "isabelleRevamp.togglePrettySymbols", "title": "Isabelle: Toggle Pretty Symbols" },
       { "command": "isabelleRevamp.ask", "title": "Isabelle: Ask" },
       { "command": "isabelleRevamp.showGoals", "title": "Isabelle: Show Goals" },
-      { "command": "isabelleRevamp.showSwarm", "title": "Isabelle: Show Swarm" }
+      { "command": "isabelleRevamp.showSwarm", "title": "Isabelle: Show Swarm" },
+      { "command": "isabelleRevamp.sledgehammer", "title": "Isabelle: Sledgehammer" },
+      { "command": "isabelleRevamp.try0", "title": "Isabelle: try0" },
+      { "command": "isabelleRevamp.sledgehammerCancel", "title": "Isabelle: Cancel Sledgehammer" },
+      { "command": "isabelleRevamp.sledgehammerInsert", "title": "Isabelle: Insert Sledgehammer Proof" },
+      { "command": "isabelleRevamp.showSledgehammer", "title": "Isabelle: Show Sledgehammer" }
     ],
+    "menus": {
+      "commandPalette": [
+        { "command": "isabelleRevamp.sledgehammerInsert", "when": "false" }
+      ]
+    },
     "languages": [{
       "id": "isabelle",
       "aliases": ["Isabelle", "Isar"],

@@ -1,6 +1,6 @@
 import { homedir } from 'node:os';
 import { resolve } from 'node:path';
-import { commands, ExtensionContext, window, workspace } from 'vscode';
+import { commands, ExtensionContext, languages, window, workspace } from 'vscode';
 import { LanguageClient, ServerOptions, State } from 'vscode-languageclient/node';
 import { Goals } from './goals';
 import { GoalsView } from './goalsView';
@@ -10,6 +10,8 @@ import { loadSymbols, unicodeSymbols } from './symbols';
 import { PrettySymbols } from './prettySymbols';
 import { Swarm } from './swarm';
 import { Ask } from './ask';
+import { Sledgehammer } from './sledgehammer';
+import { SledgehammerView } from './sledgehammerView';
 
 // Minimal startup adapted from Isabelle2025-2:
 // src/Tools/VSCode/extension/src/extension.ts:97–128.
@@ -87,6 +89,20 @@ export async function activate(context: ExtensionContext) {
     window.registerWebviewViewProvider('isabelleRevamp.swarm', swarm.view),
     commands.registerCommand('isabelleRevamp.showSwarm', () => commands.executeCommand('isabelleRevamp.swarm.focus')));
   swarm.follow(window.activeTextEditor);
+  const sledgehammer = new Sledgehammer(client, new SledgehammerView());
+  const theories = { scheme: 'file', language: 'isabelle' };
+  context.subscriptions.push(sledgehammer,
+    window.registerWebviewViewProvider('isabelleRevamp.sledgehammer', sledgehammer.view),
+    languages.registerCodeLensProvider(theories, sledgehammer),
+    languages.registerHoverProvider(theories, sledgehammer),
+    commands.registerCommand('isabelleRevamp.sledgehammer', () => sledgehammer.run('sledgehammer')),
+    commands.registerCommand('isabelleRevamp.try0', () => sledgehammer.run('try0')),
+    commands.registerCommand('isabelleRevamp.sledgehammerCancel', () => sledgehammer.cancel()),
+    commands.registerCommand('isabelleRevamp.sledgehammerInsert', (text: unknown) => {
+      if (typeof text === 'string') return sledgehammer.insert(text);
+    }),
+    commands.registerCommand('isabelleRevamp.showSledgehammer', () =>
+      commands.executeCommand('isabelleRevamp.sledgehammer.focus')));
   context.subscriptions.push(goals,
     window.onDidChangeTextEditorSelection(event => {
       if (event.textEditor === window.activeTextEditor) { goals?.follow(event.textEditor); swarm.follow(event.textEditor); }
@@ -101,8 +117,8 @@ export async function activate(context: ExtensionContext) {
       if (event.document === window.activeTextEditor?.document) goals?.follow(window.activeTextEditor);
     }),
     client.onDidChangeState(event => {
-      if (event.newState === State.Running) goals?.ready(window.activeTextEditor ?? visibleTheory());
-      else goals?.unavailable();
+      if (event.newState === State.Running) { goals?.ready(window.activeTextEditor ?? visibleTheory()); sledgehammer.ready(); }
+      else { goals?.unavailable(); sledgehammer.unavailable(); }
     }));
 
   try {
@@ -131,7 +147,8 @@ export async function activate(context: ExtensionContext) {
   return { getGoalState: () => view.snapshot(), getSwarmState: () => swarm.view.snapshot(),
     getPrettySymbols: () => window.activeTextEditor ? prettySymbols.snapshot(window.activeTextEditor) : [],
     getAskState: () => ask!.snapshot(), sendAsk, stopAsk: () => ask?.stop(),
-    selectSwarmStep: (uri: string, version: number, id: string) => swarm.select(uri, version, id) };
+    selectSwarmStep: (uri: string, version: number, id: string) => swarm.select(uri, version, id),
+    getSledgehammerState: () => sledgehammer.snapshot() };
 }
 
 export async function deactivate(): Promise<void> {
