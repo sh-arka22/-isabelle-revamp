@@ -1,0 +1,5 @@
+session Demo_DAG in "." = Demo +
+  options [quick_and_dirty]
+  theories
+    DAG_Export
+  export_files (in "out") [1] "*:dag/**"

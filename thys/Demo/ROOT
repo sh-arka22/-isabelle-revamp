@@ -1,0 +1,5 @@
+session Demo = HOL +
+  options [quick_and_dirty]
+  theories
+    Basics
+    Top

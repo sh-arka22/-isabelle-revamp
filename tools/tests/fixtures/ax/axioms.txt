@@ -1,0 +1,2 @@
+AXIOM Basics.cheat : False
+AXIOM Basics.dbl_def_raw : dbl \<equiv> \<lambda>n. n + n
