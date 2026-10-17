@@ -1,8 +1,9 @@
 import { basename } from 'node:path';
 import { Diagnostic, DiagnosticSeverity, Disposable, EventEmitter, Range, TextDocument, TextEditor } from 'vscode';
 import { LanguageClient } from 'vscode-languageclient/node';
-import { GoalsView, GoalState } from './goalsView';
-import { outputText } from './outputText';
+import { GoalMessage, GoalsView, GoalState } from './goalsView';
+import { splitMessages } from './outputHtml';
+import { StateContent, stateContent } from './stateParts';
 
 interface Caret { uri: string; line: number; character: number; version: number }
 export type SourceRange = [number, number, number, number];
@@ -17,20 +18,27 @@ const busyTypes = new Set([
 // background_bad also marks `sorry`; it is not an error diagnostic.
 const errorTypes = new Set(['text_overview_error']);
 
+// The server wraps output at this many characters (vscode_message_margin).
+const defaultMargin = 80;
+const noState: StateContent = { text: '', html: '', goalHtml: '', facts: [] };
+
 export class Goals implements Disposable {
   private updates = new EventEmitter<void>();
   readonly onDidUpdate = this.updates.event;
   private generation = 0;
+  private sent = -1;
   private caret?: Caret;
   private document?: TextDocument;
   private timer?: ReturnType<typeof setTimeout>;
   private deadline?: ReturnType<typeof setTimeout>;
   private decorationTimer?: ReturnType<typeof setTimeout>;
+  private settled?: ReturnType<typeof setTimeout>;
   private panel?: number;
   private pending = 0;
-  private earlyStates = new Map<number, string>();
-  private confirmed?: string;
-  private dynamic = '';
+  private earlyStates = new Map<number, StateContent>();
+  private confirmed?: StateContent;
+  private messages: GoalMessage[] = [];
+  private margin = defaultMargin;
   private available = false;
   private requestedAt = 0;
   private decorations = new Map<string, Map<string, boolean>>();
@@ -44,14 +52,22 @@ export class Goals implements Disposable {
 
   constructor(private client: LanguageClient, private view: GoalsView) {
     this.subscriptions.push(
+      // With editor_output_state=true the untagged dynamic output carries the
+      // command's messages and, for a proof command, its state_message.
       client.onNotification('PIDE/dynamic_output', ({ content }: { content: string }) => {
-        this.dynamic = outputText(content);
-        this.render();
+        const messages = splitMessages(content);
+        this.messages = messages.filter(message => message.kind !== 'state');
+        // No state_message after this caret's update: the command has no proof
+        // state, so the tagged query would never answer. A later tagged reply
+        // still replaces this.
+        if (this.sent === this.generation && this.confirmed === undefined
+          && !messages.some(message => message.kind === 'state')) this.acceptState(noState);
+        else this.render();
       }),
       client.onNotification('PIDE/state_output', (message: StateOutput) => {
-        const text = outputText(message.content);
-        if (message.id === this.panel) this.acceptState(text);
-        else if (this.pending) this.earlyStates.set(message.id, text);
+        const content = stateContent(message.content);
+        if (message.id === this.panel) this.acceptState(content);
+        else if (this.pending) this.earlyStates.set(message.id, content);
       }),
       client.onNotification('PIDE/decoration', (message: Decoration) => {
         const flags = this.decorations.get(message.uri) ?? new Map<string, boolean>();
@@ -108,10 +124,11 @@ export class Goals implements Disposable {
     const generation = ++this.generation;
     clearTimeout(this.timer);
     clearTimeout(this.deadline);
+    clearTimeout(this.settled);
     clearTimeout(this.decorationTimer);
     this.releasePanel();
     this.confirmed = undefined;
-    this.dynamic = '';
+    this.messages = [];
     this.requestedAt = Date.now();
     this.publish({ phase: next ? 'checking' : 'idle', text: '', errors: [] });
     if (!this.available) return;
@@ -123,6 +140,14 @@ export class Goals implements Disposable {
     this.deadline = setTimeout(() => {
       if (generation === this.generation) this.render();
     }, 10000);
+    // Identical dynamic output is not re-sent, so a second position without a
+    // proof state gives no signal at all. Once the document is settled and the
+    // query is open, a short wait without a tagged reply means "no state".
+    this.settled = setTimeout(() => {
+      if (generation !== this.generation || this.confirmed !== undefined || this.panel === undefined) return;
+      const flags = this.decorations.get(next.uri);
+      if (![...busyTypes].some(type => flags?.get(type))) this.acceptState(noState);
+    }, 3000);
   }
 
   setDiagnostics(uri: string, diagnostics: Diagnostic[]): void {
@@ -132,12 +157,26 @@ export class Goals implements Disposable {
     this.updates.fire();
   }
 
+  // Pretty-printing margin in characters, from the panel's width. Both the
+  // dynamic output and each state query have their own margin on the server.
+  setMargin(columns: number): void {
+    const margin = Math.min(200, Math.max(40, Math.floor(columns)));
+    if (margin === this.margin) return;
+    this.margin = margin;
+    if (!this.available) return;
+    void this.client.sendNotification('PIDE/output_set_margin', { margin }).catch(() => {});
+    if (this.panel !== undefined) {
+      void this.client.sendNotification('PIDE/state_set_margin', { id: this.panel, margin }).catch(() => {});
+    }
+  }
+
   private async refresh(generation: number, caret: Caret): Promise<void> {
     this.pending++;
     try {
       const { uri, line, character } = caret;
       await this.client.sendNotification('PIDE/caret_update', { uri, line, character });
       if (generation !== this.generation) return;
+      this.sent = generation;
       // Dynamic output has no cursor/version ID. A fresh built-in state panel
       // supplies a tagged confirmation and re-emits identical goal text.
       const { state_id } = await this.client.sendRequest<{ state_id: number }>('PIDE/state_init', {});
@@ -146,6 +185,9 @@ export class Goals implements Disposable {
         return;
       }
       this.panel = state_id;
+      if (this.margin !== defaultMargin) {
+        void this.client.sendNotification('PIDE/state_set_margin', { id: state_id, margin: this.margin }).catch(() => {});
+      }
       const early = this.earlyStates.get(state_id);
       if (early !== undefined) this.acceptState(early);
     } catch {
@@ -158,10 +200,11 @@ export class Goals implements Disposable {
     }
   }
 
-  private acceptState(text: string): void {
-    this.confirmed = text;
+  private acceptState(content: StateContent): void {
+    this.confirmed = content;
     if (this.caret) this.confirmedVersions.set(this.caret.uri, this.caret.version);
     clearTimeout(this.deadline);
+    clearTimeout(this.settled);
     this.render();
     if (this.caret) {
       this.refreshDecorations(this.caret.uri);
@@ -185,9 +228,7 @@ export class Goals implements Disposable {
       this.publish({ phase, text: '', errors: [] });
       return;
     }
-    // Only accept untagged dynamic output if it agrees with the current state.
-    // Rich messages that disagree (e.g. a failed tactic) stay in diagnostics.
-    const text = this.dynamic === this.confirmed ? this.dynamic : this.confirmed;
+    const { text, html, goalHtml, facts } = this.confirmed;
     // Isabelle marks an admitted command as background_bad. Match its actual
     // source range: mentions in comments/quoted text are not admissions, and
     // other bad markup must not be mistaken for `sorry`.
@@ -196,7 +237,8 @@ export class Goals implements Disposable {
     // A failed method can inherit a parent's "No subgoals!" state. Show its
     // diagnostic instead, never that misleading state under an error banner.
     const phase = failed ? 'error' : unfinished ? 'unfinished' : 'ready';
-    this.publish({ phase, text: failed ? '' : text, errors });
+    this.publish(failed ? { phase, text: '', errors, html: '', goalHtml: '', facts: [], messages: this.messages }
+      : { phase, text, errors, html, goalHtml, facts, messages: this.messages });
   }
 
   private publish(state: GoalState): void {
@@ -205,6 +247,7 @@ export class Goals implements Disposable {
       // Isabelle theory files are named after their theory; no source parser is needed.
       theory: document ? basename(document.uri.fsPath, '.thy') : undefined,
       checkStatus: document ? this.documentStatus(document).state : undefined,
+      position: this.caret ? { line: this.caret.line, character: this.caret.character } : undefined,
     });
   }
 
@@ -213,8 +256,10 @@ export class Goals implements Disposable {
     ++this.generation;
     clearTimeout(this.timer);
     clearTimeout(this.deadline);
+    clearTimeout(this.settled);
     clearTimeout(this.decorationTimer);
     this.confirmed = undefined;
+    this.messages = [];
     this.confirmedVersions.clear();
     this.annotatedVersions.clear();
     this.publish({ phase: 'unavailable', text: '', errors: [] });

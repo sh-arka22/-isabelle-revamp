@@ -1,6 +1,6 @@
 import { homedir } from 'node:os';
 import { resolve } from 'node:path';
-import { commands, ExtensionContext, window, workspace } from 'vscode';
+import { commands, ExtensionContext, Position, Selection, Uri, window, workspace } from 'vscode';
 import { LanguageClient, ServerOptions, State } from 'vscode-languageclient/node';
 import { Goals } from './goals';
 import { GoalsView } from './goalsView';
@@ -38,6 +38,13 @@ export async function activate(context: ExtensionContext) {
   };
   view.onAsk = text => { void sendAsk(text); };
   view.onStop = () => ask?.stop();
+  // Entity links in the output open their defining theory, as the official
+  // extension's open_webview_link does; most point into the Isabelle library.
+  view.onOpen = link => {
+    const position = new Position(link.line, 0);
+    void window.showTextDocument(Uri.file(link.path), { preserveFocus: false, selection: new Selection(position, position) });
+  };
+  view.onResize = columns => goals?.setMargin(columns);
   context.subscriptions.push(output,
     window.registerWebviewViewProvider('isabelleRevamp.goals', view),
     commands.registerCommand('isabelleRevamp.showGoals', () =>
@@ -131,6 +138,7 @@ export async function activate(context: ExtensionContext) {
   return { getGoalState: () => view.snapshot(), getSwarmState: () => swarm.view.snapshot(),
     getPrettySymbols: () => window.activeTextEditor ? prettySymbols.snapshot(window.activeTextEditor) : [],
     getAskState: () => ask!.snapshot(), sendAsk, stopAsk: () => ask?.stop(),
+    setGoalsMargin: (columns: number) => goals?.setMargin(columns),
     selectSwarmStep: (uri: string, version: number, id: string) => swarm.select(uri, version, id) };
 }
 
