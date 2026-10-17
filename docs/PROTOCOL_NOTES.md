@@ -742,3 +742,37 @@ contribute their text only. Comments, doctype, unknown and unclosed tags,
 `javascript:`/`data:` links and attributes such as `onclick` are dropped or
 escaped; the webview CSP stays `default-src 'none'` and the goal element is
 filled with this output only. `outputText()` is unchanged.
+
+### Frozen state panels (pins)
+
+Probed with a stdio client on a scratch theory (`lemma first: "x + 0 =
+(x::nat)" sorry`, `lemma second: "(y::nat) * 1 = y" sorry`, server options
+as the extension's). Caret on `first`, `PIDE/state_init` → `{state_id: -1}`
+(ids are negative), `PIDE/state_output {id: -1, auto_update: true}` with the
+goal `x + 0 = x`; then `PIDE/state_auto_update {id: -1, enabled: false}`.
+After that:
+
+| Step | `state_output` for `-1` |
+|------|-------------------------|
+| caret to `second` | none in 5 s |
+| `didChange`: edit `second`'s statement | none in 8 s |
+| `didChange`: edit `first`'s own statement | none in 8 s |
+| `PIDE/state_update {id: -1}` with the caret on `second` | **`y * 1 = y + 0`** — the panel now shows the caret's command |
+| caret back on `first`, `state_update` | `x + 1 = Suc x` (the edited command) |
+| caret on `second`, `state_auto_update {enabled: true}` | `y * 1 = y + 0` at once |
+| `state_exit`, then `state_update` | nothing |
+
+This matches `State_Panel.update()` in `src/Tools/VSCode/src/state_panel.scala`:
+unless the query already sits on the caret's command it calls
+`print_state.apply_query(Nil)`, which queries the *current* command; with
+auto update disabled the panel's `Commands_Changed`/`Caret_Focus` consumer
+does nothing, and `Query_Operation` only re-renders a finished query when its
+command changes while `update_pending`. Every `state_output` echoes
+`auto_update`.
+
+Consequence for pins: a pinned goal is a snapshot. The extension adopts the
+live panel (its content is already confirmed for the caret), freezes it, and
+opens a new live panel; it never sends `state_update` to a pin, since that
+would move the pin to the caret, and flags the pin *stale* when the
+document version changes. A refresh in place would need the caret on the
+pinned command (then `state_update` re-queries it, as the fifth row shows).

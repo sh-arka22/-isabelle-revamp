@@ -449,3 +449,44 @@
 - **Next:** pin/pause buttons in the header area and copy-to-editor on
   messages (Alex's 15 and 16) through the hooks above; a `sendback` click
   could then insert `by simp` directly.
+
+## 2026-10-17 — Goals sidebar: pin, pause and copy-to-editor (Alex's 15 and 16)
+
+- **Changed:** the header gained **Pin** and **Pause** buttons (also icons in
+  the view's title bar and the commands `isabelleRevamp.pinGoal`,
+  `isabelleRevamp.togglePauseGoals`, `isabelleRevamp.unpinAll`). Pin adopts
+  the live server state panel, which already holds the confirmed state for the
+  caret, freezes it with `PIDE/state_auto_update {enabled: false}` and opens a
+  fresh live panel; the pin is a card above the live goal titled
+  `Sqrt2.thy:12`, with its facts, **Go to** and **Unpin**, and a *Theory
+  edited since pinned* note once the document version changes. Pause keeps
+  the state on show and stops sending the caret (badge *paused*); Resume
+  re-follows at once, and MCP `goals_at` forces a query while paused. Messages
+  (and a goal) with a `sendback` span get an **Insert ‹by simp›** button; the
+  webview posts `{type: 'insert', text}` and the pure `insertProof.ts` turns
+  it into an edit: replace a `sorry`/`oops` ending the command's line or alone
+  on the next line, else a new line indented two deeper, as jEdit's
+  `Active.action` does with `padding_command`. The suggestion's Unicode is
+  encoded back to ASCII with the new `asciiSymbols()` so theories stay ASCII.
+  `getGoalState()` adds `pins` (`{id, uri, theory, position, version, stale,
+  text, goalHtml, facts}`) and `paused`; the API adds `insertProofText(text)`.
+- **Passed:** `node extension/test/unit_insertProof.cjs` (sendbacks of the
+  real `try0` output, button markup, ASCII round trip, every edit rule),
+  `unit_goals.cjs` and `unit_goalsView.cjs` (pins, pause and insert in the
+  view model and the webview script). `bash scripts/check_goals2.sh` ran stock
+  VS Code against the real server: `try0`'s suggestion replaced `sorry` and
+  the theory checked clean with the caret after the proof; a pin kept its
+  goal through cursor moves, was flagged stale by an edit and removed by
+  **Unpin all**; paused goals ignored the cursor and resumed at once. The
+  M3 and M4 suites and `check_goals.sh` pass unchanged.
+- **Discovered (live, Isabelle2025-2):** a state panel with auto update off
+  keeps its content through caret moves, edits elsewhere and edits of its own
+  command; `PIDE/state_update` and `PIDE/state_auto_update true` both re-run
+  `print_state` at the *caret's* command, so neither can refresh a pin in
+  place — the pin stays a snapshot. State ids are negative (`-1`, `-2`, …).
+  Details in `PROTOCOL_NOTES.md`, "Frozen state panels".
+- **Test expectations changed on purpose:** `unit_goalsView.cjs` expects an
+  insert button to post `{type: 'insert', text}` rather than a generic
+  `action` message.
+- **Next:** Sledgehammer results as messages with the same Insert button
+  (Alex's 17), and a refresh of a pin when the caret returns to its command.
