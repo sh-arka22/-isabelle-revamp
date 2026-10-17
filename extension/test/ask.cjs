@@ -1,7 +1,7 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { Ask, AskStream, helpLine, registrationCommand } = require('../out/ask');
+const { Ask, AskStream, claudeArgs, helpLine, registrationCommand, serverRootFor } = require('../out/ask');
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 exports.checkAsk = async function () {
   const root = path.resolve(__dirname, '../..');
@@ -41,7 +41,18 @@ exports.checkAsk = async function () {
   const noMcp = runner('missing'); await noMcp.send(context, 'prove this');
   assert.equal(noMcp.snapshot().entries.at(-1).text, helpLine('MCP'));
   assert(fs.readFileSync(path.join(root, 'mcp/README.md'), 'utf8').includes(registrationCommand));
-  assert(!helpLine('claude').includes('\n') && !helpLine('MCP').includes('\n'));
+  assert(!helpLine('claude').includes('\n') && !helpLine('MCP').includes('\n') && !helpLine('server').includes('\n'));
+  // An installed vsix has no mcp/ beside it: the open workspace folder supplies the server.
+  const elsewhere = path.join(root, '.dev-host/no-such-extension-parent');
+  assert.equal(serverRootFor(context, root), root);
+  assert.equal(serverRootFor(context, elsewhere), root);
+  assert.equal(serverRootFor({ ...context, cwd: path.join(root, '.dev-host') }, elsewhere), elsewhere);
+  const config = JSON.parse(claudeArgs(context, serverRootFor(context, elsewhere)).find(arg => arg.includes('mcpServers')));
+  assert.equal(config.mcpServers.isabelle.command, path.join(root, 'mcp/.venv/bin/python'));
+  const noServer = new Ask(elsewhere, () => {}, { executable: path.join(__dirname, 'fakeClaude.cjs'),
+    env: { ...process.env, ELECTRON_RUN_AS_NODE: '1', M8_SCENARIO: 'stream', M8_CAPTURE: capture, M8_PID_FILE: pidFile } });
+  await noServer.send({ ...context, cwd: path.join(root, '.dev-host') }, 'prove this');
+  assert.equal(noServer.snapshot().entries.at(-1).text, helpLine('server'));
   for (const mode of ['bad-json', 'exit-error']) {
     const failure = runner(mode); await failure.send(context, 'prove this');
     assert(failure.snapshot().entries.some(e => e.kind === 'notice'));
@@ -68,6 +79,6 @@ exports.checkAsk = async function () {
   stream.accept({ type: 'result', is_error: true, errors: ['Actual model error'], permission_denials: [{}] });
   assert(entries.some(e => e.text === 'Actual model error'));
   assert(entries.some(e => e.text.includes('denied')));
-  console.log('PASS: Ask spawn, flags, UTF-8 streaming, tool summaries, transcript, Stop/process tree, timeout, failures, and exact help lines');
+  console.log('PASS: Ask spawn, flags, UTF-8 streaming, tool summaries, transcript, Stop/process tree, timeout, failures, workspace server root, and exact help lines');
 };
 if (require.main === module) exports.checkAsk().catch(error => { console.error(error); process.exitCode = 1; });
