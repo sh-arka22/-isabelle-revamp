@@ -119,6 +119,46 @@ end
   assert.deepEqual(declaredName(' (in loc) thm:'), { name: 'thm', column: 10 });
   assert.deepEqual(outline('lemma unfinished: "x"\n  have').items.map(item => item.endLine), [1]);
   assert.deepEqual(outline('').items, []);
+
+  // A goal ends at its terminal proof token: the commands after it (ML, value,
+  // text, thm, …) are not part of the theorem, so their errors are not its own.
+  const mixed = [
+    'lemma a: "True" by simp',                   // 0
+    'ML \\<open>error "x"\\<close>',               // 1
+    'value "(1::nat)"',                          // 2
+    'lemma b: "True"',                           // 3
+    '  by (simp add:',                           // 4
+    '      foo)',                                // 5
+    'text \\<open>by simp . done\\<close>',        // 6
+    'lemma c: "True"',                           // 7
+    'proof -',                                   // 8
+    '  have "True" by simp',                     // 9
+    '  then show ?thesis .',                     // 10
+    'qed',                                       // 11
+    'thm c',                                     // 12
+    'lemma d: "True" ..',                        // 13
+    'declare c [simp]',                          // 14
+    'lemma e: "True"',                           // 15
+    '  apply simp',                              // 16
+    '  done',                                    // 17
+    '  print_theorems',                          // 18
+    'lemma f: "True"',                           // 19
+    '  sorry',                                   // 20
+    'lemma g: "False"',                          // 21
+    '  oops',                                    // 22
+    'lemma h: "x"',                              // 23
+    'value "2"',                                 // 24
+    'lemma i: "True" by simp',                   // 25
+    'end',                                       // 26
+  ].join('\n');
+  const spans = Object.fromEntries(goalItems(outline(mixed)).map(item => [item.name, [item.line, item.endLine]]));
+  assert.deepEqual(spans, { a: [0, 0], b: [3, 5], c: [7, 11], d: [13, 13], e: [15, 18], f: [19, 20], g: [21, 22], h: [23, 24], i: [25, 25] });
+  assert(goalItems(outline(mixed)).find(item => item.name === 'g').oops);
+  assert(!goalItems(outline(mixed)).find(item => item.name === 'h').oops, 'an unfinished goal swallows the next command but not a later oops');
+  const errorAfter = classifyTheorems(goalItems(outline(mixed)), { known: true, errors: [[1, 11, 1, 20]], sorries: [[20, 2, 20, 7]], busy: [[2, 0, 2, 16]] });
+  assert.deepEqual(errorAfter.map(item => [item.name, item.status]),
+    [['a', 'proved'], ['b', 'proved'], ['c', 'proved'], ['d', 'proved'], ['e', 'proved'], ['f', 'unfinished'], ['g', 'unfinished'], ['h', 'proved'], ['i', 'proved']],
+    'an error or busy ML/value line after a lemma leaves the lemma proved');
   console.log('PASS: Sqrt2 outline, headings, blocks, names, anonymous goals, oops, opaque prose and folds');
 };
 

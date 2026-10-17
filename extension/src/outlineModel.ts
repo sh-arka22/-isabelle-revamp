@@ -67,6 +67,12 @@ function opensBlock(tokens: Word[], index: number): boolean {
   return false;
 }
 const isCommand = (word: string) => word === 'end' || headings.includes(word) || Object.hasOwn(kinds, word);
+// A goal is finished by one of these outside proof…qed; the next command
+// (any word in column 0, or a known command) then ends the item, so `ML`,
+// `value` or `text` after a lemma are not part of it.
+const finishers = new Set(['by', '.', '..', 'done', 'sorry', 'oops']);
+const startsCommand = (token: Word) => token.atLineStart
+  && (token.column === 0 && /^[\p{L}_]/u.test(token.text) || isCommand(token.text));
 
 export function outline(source: string): Outline {
   const lines = source.split('\n');
@@ -76,13 +82,14 @@ export function outline(source: string): Outline {
   const folds: [number, number][] = [];
   const proofs: number[] = [];
   let leaf: OutlineItem | undefined;
+  let depth = 0, finished = false;
   const lastContent = (from: number, to: number) => {
     let end = Math.min(to, lines.length - 1);
     while (end > from && !/\S/.test(lines[end])) end--;
     return Math.max(end, from);
   };
   const close = (item: OutlineItem, before: number) => { item.endLine = lastContent(item.line, before - 1); };
-  const closeLeaf = (line: number) => { if (leaf) { close(leaf, line); leaf = undefined; } };
+  const closeLeaf = (line: number) => { if (leaf) { close(leaf, line); leaf = undefined; } depth = 0; finished = false; };
   const attach = (item: OutlineItem) => { (open.at(-1)?.children ?? items).push(item); };
 
   for (const [index, token] of tokens.entries()) {
@@ -92,12 +99,16 @@ export function outline(source: string): Outline {
       continue;
     }
     const word = token.text;
-    if (word === 'proof') { proofs.push(token.line); continue; }
+    if (finished && startsCommand(token)) closeLeaf(token.line);
+    if (word === 'proof') { proofs.push(token.line); depth++; continue; }
     if (word === 'qed') {
       const start = proofs.pop();
       if (start !== undefined && token.line - 1 > start) folds.push([start, token.line - 1]);
+      depth = Math.max(0, depth - 1);
+      if (depth === 0 && leaf?.kind === 'goal') finished = true;
       continue;
     }
+    if (leaf?.kind === 'goal' && depth === 0 && finishers.has(word)) finished = true;
     if (!token.atLineStart) continue;
     if (word === 'end') {
       closeLeaf(token.line);
