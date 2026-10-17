@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="150" viewBox="0 0 760 150" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13">
+  <title>ProofMap status legend (leanblueprint colours, rendered from the user's VS Code theme in the real viewer)</title>
+  <!-- missing: blue border -->
+  <ellipse cx="70" cy="50" rx="52" ry="26" fill="#f6f8fa" stroke="#3794ff" stroke-width="3"/>
+  <text x="70" y="54" text-anchor="middle" fill="#24292f" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12">lemma</text>
+  <text x="70" y="104" text-anchor="middle" fill="#57606a" font-weight="600">missing</text>
+  <text x="70" y="122" text-anchor="middle" fill="#8b949e" font-size="11">in blueprint.yaml,</text>
+  <text x="70" y="136" text-anchor="middle" fill="#8b949e" font-size="11">no fact yet</text>
+
+  <!-- defined: box shape -->
+  <rect x="140" y="26" width="104" height="48" rx="4" fill="#f6f8fa" stroke="#8b949e" stroke-width="2"/>
+  <text x="192" y="54" text-anchor="middle" fill="#24292f" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12">dbl</text>
+  <text x="192" y="104" text-anchor="middle" fill="#57606a" font-weight="600">defined</text>
+  <text x="192" y="122" text-anchor="middle" fill="#8b949e" font-size="11">constant or</text>
+  <text x="192" y="136" text-anchor="middle" fill="#8b949e" font-size="11">definition</text>
+
+  <!-- sorry: red border -->
+  <ellipse cx="314" cy="50" rx="60" ry="26" fill="#f6f8fa" stroke="#f14c4c" stroke-width="3"/>
+  <text x="314" y="54" text-anchor="middle" fill="#24292f" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12">dbl_mono_open</text>
+  <text x="314" y="104" text-anchor="middle" fill="#57606a" font-weight="600">sorry</text>
+  <text x="314" y="122" text-anchor="middle" fill="#8b949e" font-size="11">its own proof</text>
+  <text x="314" y="136" text-anchor="middle" fill="#8b949e" font-size="11">has a hole</text>
+
+  <!-- proved: green fill -->
+  <ellipse cx="436" cy="50" rx="52" ry="26" fill="#a5d6a7" stroke="#4caf50" stroke-width="2"/>
+  <text x="436" y="54" text-anchor="middle" fill="#1b1f23" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12">uses_hole</text>
+  <text x="436" y="104" text-anchor="middle" fill="#57606a" font-weight="600">proved</text>
+  <text x="436" y="122" text-anchor="middle" fill="#8b949e" font-size="11">no hole of its own,</text>
+  <text x="436" y="136" text-anchor="middle" fill="#8b949e" font-size="11">rests on a sorry</text>
+
+  <!-- fully_proved: dark-green fill -->
+  <ellipse cx="558" cy="50" rx="52" ry="26" fill="#2e7d32" stroke="#1b5e20" stroke-width="2"/>
+  <text x="558" y="54" text-anchor="middle" fill="#ffffff" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12">fully_ok</text>
+  <text x="558" y="104" text-anchor="middle" fill="#57606a" font-weight="600">fully_proved</text>
+  <text x="558" y="122" text-anchor="middle" fill="#8b949e" font-size="11">no oracle anywhere</text>
+  <text x="558" y="136" text-anchor="middle" fill="#8b949e" font-size="11">below it</text>
+
+  <!-- oracle: solid red -->
+  <ellipse cx="690" cy="50" rx="52" ry="26" fill="#d32f2f" stroke="#b71c1c" stroke-width="2"/>
+  <text x="690" y="54" text-anchor="middle" fill="#ffffff" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12">cheat</text>
+  <text x="690" y="104" text-anchor="middle" fill="#57606a" font-weight="600">oracle</text>
+  <text x="690" y="122" text-anchor="middle" fill="#8b949e" font-size="11">depends on an oracle</text>
+  <text x="690" y="136" text-anchor="middle" fill="#8b949e" font-size="11">other than skip_proof</text>
+</svg>
