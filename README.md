@@ -17,9 +17,9 @@ Isabelle is excellent at the research and logic level. It integrates poorly with
 
 | | Component | What it does | Status |
 |---|---|---|---|
-| 🧩 | **VS Code extension** (`extension/`) | Isabelle/HOL in stock VS Code with the unmodified `isabelle vscode_server`: Isar highlighting, pretty symbols, the **Isabelle Goals** sidebar, the **Swarm** proof board, **Ask Isabelle** (Claude Code) and a seven-tool MCP bridge. | 🟢 working (M1–M9) — [try it in five minutes](extension/README.md) · [demo](docs/DEMO.md) |
+| 🧩 | **VS Code extension** (`extension/`) | Isabelle/HOL in stock VS Code with the unmodified `isabelle vscode_server`: Isar highlighting, pretty symbols, the **Isabelle Goals** sidebar, the **Swarm** proof board, **Ask Isabelle** (Claude Code) and a seven-tool MCP bridge. | 🟢 working (M1–M9, plus Alex's 18 UX items on `integrate/all`) — [try it in five minutes](extension/README.md) · [demo](docs/DEMO.md) |
 | 🃏 | **Hover cards** | Lean-style Markdown cards in stock VS Code: statement, doc with its source, breadcrumb, `File.thy:N`. No new syntax. | 🟡 planned — [plan](docs/plans/vscode-companion.md) |
-| 🗺️ | **ProofMap** | A theorem dependency graph whose edges and statuses come from what the kernel recorded (`Thm_Deps`, `sorry` = the `skip_proof` oracle). Viewer inside VS Code. | 🟢 prototype on `proto/proofmap` · viewer [plan](docs/plans/vscode-companion.md) |
+| 🗺️ | **ProofMap** | A theorem dependency graph whose edges and statuses come from what the kernel recorded (`Thm_Deps`, `sorry` = the `skip_proof` oracle). Viewer inside VS Code. | 🟢 export prototype on `proto/proofmap` · viewer built on `feat/proofmap` ([plan](docs/plans/vscode-companion.md)) |
 | ⚡ | **Beam** | Speculative `run_at` / `find_theorems_at` agent tools over MCP: try 16 candidate proofs without touching the file. | 🟢 prototype on `proto/beam` |
 | 🤖 | **Agent loop** | Claude closes `sorry` holes: one hole → one draft PR → kernel batch build + map audit → a human merges. | 🟡 planned |
 | 🛡️ | **CI gate** | `ci-ok`: lint, Isabelle build + export, map audit, agent lint. Nothing an agent writes reaches `main` without the kernel. | 🟢 prototype on `proto/ci` |
@@ -57,13 +57,13 @@ flowchart LR
   revamp -->|"draft PR per hole"| ci
 ```
 
-Same kernel, same HOL, same Isar. Everything we add sits outside: an editor companion built on standard VS Code APIs, a kernel-checked export, and headless agent endpoints.
+Same kernel, same HOL, same Isar. Everything we add sits outside: our own editor extension built on standard VS Code APIs, a kernel-checked export, and agent endpoints (in the editor through the MCP bridge, or headless).
 
 ## Start here
 
 - **[extension/README.md](extension/README.md)** — run the VS Code extension (F5) and the [five-step demo](docs/DEMO.md); [mcp/README.md](mcp/README.md) connects Claude Code or Codex to it.
 - **[PLAN.md](PLAN.md)** — system design, contracts, git workflow, CI, workstreams, the 24-hour timeline and the first issues.
-- **[docs/plans/](docs/plans)** — per-workstream plans awaiting approval: [VS Code companion (#9, #10)](docs/plans/vscode-companion.md), [Isabelle-MCP](docs/plans/isabelle-mcp.md).
+- **[docs/plans/](docs/plans)** — per-workstream plans awaiting approval: [VS Code companion (plan items 9 and 10)](docs/plans/vscode-companion.md), [Isabelle-MCP](docs/plans/isabelle-mcp.md).
 - **[AGENTS.md](AGENTS.md)** — the rules every human and agent working in this repo follows.
 
 ## Team
@@ -87,5 +87,5 @@ Same kernel, same HOL, same Isar. Everything we add sits outside: an editor comp
 - [Prove2Me](https://prove2.me) (Lean) and [leanblueprint](https://github.com/PatrickMassot/leanblueprint) inspired ProofMap's dependency-graph workflow. We have no affiliation with either.
 - [PIDE MCP](https://github.com/kappelmann/isabelle-pide-mcp) (LGPL-3.0) is the base for Beam.
 - [Isabelle-MCP](https://github.com/xqyww123/Isabelle-MCP) (LGPL-2.1-or-later, Qiyuan Xu): a headless Isabelle MCP server, proposed as the agents' interface for evaluation and queries; see [docs/plans/isabelle-mcp.md](docs/plans/isabelle-mcp.md).
-- [vscode-isabelle by yfprojects](https://github.com/real-yfprojects/vscode-isabelle) (BSD-3-Clause) is the editor extension we build alongside.
+- [vscode-isabelle by yfprojects](https://github.com/real-yfprojects/vscode-isabelle) (BSD-3-Clause): its colour table and outline design are ported with credit in `extension/THIRD_PARTY_NOTICES.md`; it is not installed or pinned.
 - Lean Beam's `runAt` inspired our `run_at` tool.

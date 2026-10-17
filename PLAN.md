@@ -2,9 +2,9 @@
 
 **isabelle-revamp: system design and 24-hour plan**
 
-> **Changelog.** v1 = the merged plan. v1.1 = the 34 review fixes, the agent architecture (§11A) and the first-hour checklist (§0). v1.2 = pointers only: `docs/plans/isabelle-mcp.md` (Isabelle-MCP as a prover interface, spike S7) and `docs/plans/vscode-companion.md` (plan items 9 and 10). **v2 = re-baselined at T+4:30** after half a day: the team is four people; Leo's VS Code extension (M1–M9) exists and works on the stock `isabelle vscode_server`, so the yfprojects dependency is dropped and the "companion extension" is folded into `extension/`; Alex's 18 hands-on items are built on five feature branches and being integrated; the ProofMap viewer is being built inside `extension/`; the agent architecture has two coexisting designs (A, shared session through the MCP bridge; B, headless); `out/claims.json` links agents to the viewer; every T+ time and the rest rota are re-baselined; §0 is now "Status now and the next hour"; §1 is a note.
+> **Changelog.** v1 = the merged plan. v1.1 = the 34 review fixes, the agent architecture (§11A) and the first-hour checklist (§0). v1.2 = pointers only: `docs/plans/isabelle-mcp.md` (Isabelle-MCP as a prover interface, spike S7) and `docs/plans/vscode-companion.md` (plan items 9 and 10). **v2 = re-baselined at T+4:30** after half a day: the team is four people; Leo's VS Code extension (M1–M9) exists and works on the stock `isabelle vscode_server`, so the yfprojects dependency is dropped and the "companion extension" is folded into `extension/`; Alex's 18 hands-on items are built on five feature branches and merged into `integrate/all` (adversarial review next); the ProofMap viewer is built inside `extension/` on `feat/proofmap`; the agent architecture has two coexisting designs (A, shared session through the MCP bridge; B, headless); `out/claims.json` links agents to the viewer; every T+ time and the rest rota are re-baselined; §0 is now "Status now and the next hour"; §1 is a note.
 
-> **Repo:** `sh-arka22/-isabelle-revamp` (D1: the only repo; D2 rename to `sh-arka22/isabelle-revamp` still recommended, not done). **Kickoff:** 09:39 BST, Sat 17 Oct 2026 (first commit). **Now:** about 14:00 BST = **T+4:30**. **Demo:** assumed at T+24 = about 09:40 BST, Sun 18 Oct. *This is an assumption: confirm the demo slot with the organisers at the next train.* Times are T+h:mm from kickoff; wall clock = 09:39 BST + T. The 36-hour variant is in §12.
+> **Repo:** `sh-arka22/-isabelle-revamp` (D1: the only repo; D2 rename to `sh-arka22/isabelle-revamp` still recommended, not done). **Kickoff:** 09:39 BST, Sat 17 Oct 2026 (first commit). **Now:** about 14:09 BST = **T+4:30**. **Demo:** assumed at T+24 = about 09:40 BST, Sun 18 Oct. *This is an assumption: confirm the demo slot with the organisers at the next train.* Times are T+h:mm from kickoff; wall clock = 09:39 BST + T. The 36-hour variant is in §12.
 > **Team (four):**
 > - **Alex Hyman** (`hymanimy`): maths, Isabelle, design, pitch.
 > - **ark** (`sh-arka22`, repo owner): repo, CI, ProofMap export and viewer.
@@ -22,20 +22,20 @@
 **DONE**
 - `main` = PLAN v1.2 + README (facelift) + `tools/prototypes/` (docs index prototype: `hover_proto.py`, `isarref_index.py`, `docstat.py`). PRs **#1** (`proto/docs`), **#2** (plan v1.1) and **#5** (README) are merged.
 - **The extension exists and works** (Leo, `extension/`, M1–M9): Isar highlighting; display-only Unicode symbols (ASCII on disk); the **Isabelle Goals** sidebar with goal at caret and *unfinished (sorry)* / *Proof error* / *fully checked* states; `examples/Sqrt2.thy` fully proved; the seven-tool **MCP bridge** (`open`, `edit`, `goals_at`, `errors`, `status`, `sorry_positions`, `processing_status`; `mcp/server.py`, FastMCP, two agents at once, Claude Code or Codex); the **Swarm** board (six-step proof filled live by agents); **Ask Isabelle** (Claude Code streamed inside the sidebar); live acceptance checks `scripts/check_m3.sh` … `check_m9a.sh`. It uses the **unmodified** `isabelle vscode_server` in stock VS Code.
-- **Alex's 18 items are built** on five feature branches in the planning container (`feat/quickwins` 1–5, `feat/symbols` 6/7/11, `feat/goals` 8/12–16, `feat/decorations` 9/10/18 plus server semantic colours, `feat/sledgehammer` 17), each with a `scripts/check_<feature>.sh` that passed on the headless rig (§9) and a `docs/PROGRESS.md` entry. Items 15 and 16 are the only ones still uncommitted (work in progress on `feat/goals`).
-- Pain points: `docs/PAINPOINTS.md` has 33 entries from Leo's fresh install (plan item 4 wanted 10).
+- **Alex's 18 items are built** on five feature branches in the planning container (`feat/quickwins` 1–5, `feat/symbols` 6/7/11, `feat/goals` 8/12–16, `feat/decorations` 9/10/18 plus server semantic colours, `feat/sledgehammer` 17), each with a `scripts/check_<feature>.sh` (six scripts: goals has `check_goals.sh` and `check_goals2.sh`) that passed on the headless rig (§9) and a `docs/PROGRESS.md` entry; items 15 and 16 are committed on `feat/goals` (`cf345d2`, `3de5cd3`). **All five branches are merged into `integrate/all`** (T+4:35, `--no-ff`, in the order quickwins → symbols → decorations → sledgehammer → goals; merge commits `cc53035`…`ce9df04`, fix-ups `c8a6486` and `ea5ac75`). On the merged tree `npm run compile` is clean, every `unit_*.cjs` passes, and the rig passed `check_m3.sh` (12 PASS), `check_quickwins.sh` (24), `check_symbols.sh` (15), `check_decorations.sh` (16), `check_sledgehammer.sh` (17), `check_goals.sh` (14), `check_goals2.sh` (18), `check_m4.sh` (28), `check_m6.sh` (46), `check_m9a.sh` (45) and `check_m8.sh` (66), all exit 0 (`docs/PROGRESS.md`, "Integration of Alex's feedback round").
+- Pain points: `docs/PAINPOINTS.md` has 35 entries from Leo's fresh install (plan item 4 wanted 10).
 - Plans: `docs/plans/vscode-companion.md` (items 9, 10), `docs/plans/isabelle-mcp.md` (S7), `AGENTS.md`, `CLAUDE.md`.
 
 **IN PROGRESS**
-- **Integration:** PR **#6** `integrate/all` is open (Leo's extension + #3 + #4; merges cleanly). An integrator is merging the five feature branches into `integrate/all` now, then an adversarial review and fixes.
-- **ProofMap viewer** (plan item 10) on `feat/proofmap` inside `extension/`, from a detailed brief (§13): dependencies added (`cytoscape`, `cytoscape-dagre`, `esbuild`), no commit yet.
+- **Integration:** PR **#6** `integrate/all` is open (Leo's extension + #3 + #4 + the five `feat/*` branches; merges cleanly into `main`). Next: the adversarial review of the 18 items by a human who did not build them (§8), fixes as commits on `integrate/all`, then #6 is merged.
+- **ProofMap viewer** (plan item 10) is built on `feat/proofmap` inside `extension/` (commit `8b770e5`: `src/map/`, `webview/map/` bundled by `esbuild.mjs`, `contracts/claims.schema.json` with README and example, `unit_proofmap.cjs` 11 checks, `check_proofmap.sh` passed on the rig, `perf_proofmap.cjs` 500 nodes / 740 edges in 564–623 ms to first paint); not yet on `integrate/all`.
 - PRs **#3** (Isabelle-MCP plan) and **#4** (companion plan + `AGENTS.md`/`CLAUDE.md`) are open; both are inside #6.
 
 **NOT STARTED**
 - The **skeleton PR** (LICENSE BSD-3, CONTRIBUTING, `.gitignore` additions, `.gitattributes`, `.isabelle-version`, `deps.lock`, `contracts/`, ADRs, `.claude/settings.json`).
 - The **20 issues** (0 exist) and the labels. **Issue numbering:** PRs already occupy #1–#6, so plan items are created as issues titled **`P<N>: <title>`** and referenced as **"plan item N"**; never assume issue #N = item N.
 - **CI** (`proto/ci` unmerged; no `ci-ok` has ever reported), the ruleset, the squash-only setting, the rename (D2). `proto/{ci,proofmap,beam,docs}` are unchanged since kickoff.
-- `thys/` (Demo fixture, Apéry), `contracts/`, ProofMap export (item 6), Beam (item 7), the docs index as a tool (item 8), the `revamp` MCP server (item 12), `setup.sh`/`doctor.sh`/`demo-smoke.sh` (item 13), `run_holes.sh` (item 14), the ζ(5) skeleton (item 15), the demo PR and video (item 16). Spikes S1–S7 have not run; the Train 4 go/no-go is overdue.
+- `thys/` (Demo fixture, Apéry), `contracts/`, ProofMap export (item 6), Beam (item 7), the docs index as a tool (item 8), the `revamp` MCP server (item 12), `setup.sh`/`doctor.sh`/`demo-smoke.sh` (item 13), `run_holes.sh` (item 14), the ζ(5) skeleton (item 15), the demo PR and video (item 16). Spikes S1 and S3–S8 have not run (S2 is retired, S0 is half done); the Train 4 go/no-go is overdue.
 
 ### The next hour, T+4:30–5:30 (14:09–15:09 BST)
 
@@ -46,7 +46,7 @@
 - [ ] Claude budget: agree a usage cap for the overnight agent waves and keep quota for the live demo (Ask Isabelle uses the signed-in Claude Code CLI on the demo machine).
 
 **ark, T+4:35–5:30:**
-- [ ] Create the 20 issues as `P<N>: <title>` (§13 list) and the seven labels:
+- [ ] Create the 20 issues as `P<N>: <title>` (§13 list) and the eight labels:
   ```bash
   R=sh-arka22/-isabelle-revamp        # or sh-arka22/isabelle-revamp after D2
   titles=( "Bootstrap and canonical repo" "CI gate, setup-isabelle, ruleset" "Contracts v1 and tools/ skeleton"
@@ -57,12 +57,12 @@
            "Isar outline polish and Read as paper (stretch)" "isa2uni textconv (stretch)" "docs_search (stretch)"
            "Isabelle2026-RC4 canary (stretch)" )
   for i in "${!titles[@]}"; do gh issue create -R "$R" --title "P$((i+1)): ${titles[$i]}" --body "PLAN.md §13, plan item $((i+1))"; done
-  for l in agent-generated statement-change contract-change parked needs-human full-ci do-not-merge; do gh label create "$l" -R "$R"; done
+  for l in agent-generated statement-change contract-change parked needs-human full-ci do-not-merge pain-point; do gh label create "$l" -R "$R"; done
   ```
 - [ ] Skeleton PR (plan item 1, §8): merged by T+5:30. **Merge PR #6 first, as a merge commit** (the squash-only setting is not applied yet), so Leo's M1–M9 history survives; everything after #6 is squash-merged.
 - [ ] D2 rename, make the repo public, invite Leo (and check Alex's and retinapeg's invites are accepted).
 
-**Leo, T+4:30–5:30:** finish items 15 and 16 on `feat/goals` and commit; review the integrator's merge of the five branches (conflicts are expected in `extension.ts`, `package.json`, `goalsView.ts`); run `check_m3.sh` plus the five `check_<feature>.sh` on the merged `integrate/all`.
+**Leo, T+4:30–5:30:** review the merged `integrate/all` (the hand-resolved conflicts in `extension.ts`, `package.json` and `goalsView.ts`: activation order, `rebind(client)` on restart, one pretty-print margin for sidebar and panel); re-run `check_m3.sh` plus the six `check_<feature>.sh` on his Mac with the real VS Code; decide with ark whether `isabelleRevamp.decorations.semanticColours` stays on by default now that the grammar colours inner syntax too (the integration entry's "Next").
 
 **retinapeg, T+4:30–5:30:** S3 and S7 now, in parallel (Beam on 2025-2; `isabelle-mcp` 0.6.0 on Demo); the go/no-go is at **Train 7 (T+5:15)**. Draft the `isabelle-beam` and `isabelle-lsp` parts of C4; note that the bridge's seven tools are C4's server `isabelle` as implemented.
 
@@ -119,16 +119,16 @@ For the live beat the golden hole has `sorry` on its own line and we say so; the
 
 | ID | Requirement | Status |
 |---|---|---|
-| FR0 | **Modern Isar editor in stock VS Code** on the unmodified server: highlighting, display-only symbols with an input method, Goals sidebar and panel, outline, decorations, gutter ticks, Sledgehammer/try0, restart, library locking (Alex's 18 items, §13.1). | built; integration in progress |
+| FR0 | **Modern Isar editor in stock VS Code** on the unmodified server: highlighting, display-only symbols with an input method, Goals sidebar and panel, outline, decorations, gutter ticks, Sledgehammer/try0, restart, library locking (Alex's 18 items, §13.1). | built; merged on `integrate/all`; adversarial review pending |
 | FR1 | **Hover:** (a) the server's hover for values, types and constants, decoded and rendered as an `isabelle` code block (item 3, built); (b) **hover cards** for facts, constants and types with statement, doc with its source labelled, kind, full name, breadcrumb, file:line, and Isar-Ref docs for commands, methods and attributes (plan item 9). | (a) built; (b) not started |
 | FR2 | **ProofMap export** of a session's theorem-level DAG from kernel-recorded dependencies; `Session.Theory.fact` IDs, status, optional `nl`, source link. | not started (prototype on `proto/proofmap`) |
-| FR3 | **ProofMap viewer** inside `extension/`: leanblueprint legend, click → file:line, re-renders on change, agent claims shown from `claims.json`, events feed, replay snapshots. | in progress (`feat/proofmap`) |
+| FR3 | **ProofMap viewer** inside `extension/`: leanblueprint legend, click → file:line, re-renders on change, agent claims shown from `claims.json`, events feed, replay snapshots. | built on `feat/proofmap`; not yet on `integrate/all` |
 | FR4 | **Integrity gate** in CI and `verify`: fails on a changed statement hash, an axiom outside `axioms.allow`, a new oracle and (in `verify`) hole laundering; status regression is a warning. The viewer mirrors the warnings. | not started |
 | FR5 | **Agent endpoints over MCP.** Server `isabelle` (**the bridge, Design A**, built): the seven tools. Server `isabelle-beam` (**Design B**): `run_at`, `find_theorems_at`, PIDE MCP built-ins; proposed `isabelle-lsp` (S7). Server `revamp`: `map_status`, `next_holes`, `node_context`, `claim`, `verify`, `docs_lookup`; stretch `docs_search`. | bridge built; the rest not started |
 | FR6 | **Agent loop (B):** one hole → one draft PR (the lock) → one worktree → a human merges. **Agent loop (A):** Ask Isabelle or a Swarm client edits the open buffer; completion is kernel-checked by `status()`; nothing reaches `main` without the gate. | A built; B not started |
 | FR7 | **One-command setup:** `scripts/setup.sh` reads the pins, installs our vsix from `main-latest` (or `npm ci` + F5 from source), registers the MCP servers, writes gitignored local settings. `doctor.sh` diagnoses. No third-party editor extension is installed. | not started |
 | FR8 | **Maths content:** Apéry fully proved; the ζ(5) blueprint skeleton. | not started |
-| FR9 | **Pain-point log** with each entry turned into an issue. | 33 entries in `docs/PAINPOINTS.md`; issues not filed |
+| FR9 | **Pain-point log** with each entry turned into an issue. | 35 entries in `docs/PAINPOINTS.md`; issues not filed |
 
 ### Non-functional targets
 
@@ -143,7 +143,7 @@ For the live beat the golden hole has `sorry` on its own line and we say so; the
 | Live demo | Golden path succeeds in 5 of 5 rehearsals; nothing needs the network except Claude Code; demo machine ≥ 16 GB (32 GB preferred); fallback video recorded. |
 | Soundness | Nothing an agent writes reaches `main` without a kernel batch build and the gate. Bridge `status()`, Beam and Isabelle-MCP verdicts are advisory for merging. |
 | Look | Webviews use `--vscode-*` variables and Isabelle's light/dark palette; readable in light, dark and high contrast; CSP `default-src 'none'`, nonce'd scripts, no `innerHTML` with server content. |
-| Platforms | macOS arm64 (demo) and Linux x86_64 (CI, the headless rig) must work. Windows best effort. |
+| Platforms | macOS arm64 (demo) and Linux x86_64 (CI, the headless rig) must work. Windows best effort (Cygwin). |
 
 ### Constraints
 
@@ -160,8 +160,8 @@ For the live beat the golden hole has `sorry` on its own line and we say so; the
 ### MUST: on `main` by the cut line (T+15, tag `demo-v1`)
 
 1. Repo, the `ci-ok` gate and the ruleset (plan items 1–3). *(not started)*
-2. The extension with Alex's 18 items merged and reviewed; hover cards on Demo, Apéry and HOL lemmas plus one Isar keyword hover (items 8, 9). *(18 items built; cards not started)*
-3. ProofMap export with correct statuses, the audit, and the viewer in `extension/` on the Apéry fixture (items 6, 10). *(viewer in progress)*
+2. The extension with Alex's 18 items merged and reviewed; hover cards on Demo, Apéry and HOL lemmas plus one Isar keyword hover (items 8, 9). *(18 items merged on `integrate/all`, review pending; cards not started)*
+3. ProofMap export with correct statuses, the audit, and the viewer in `extension/` on the Apéry fixture (items 6, 10). *(viewer built on `feat/proofmap`; export not started)*
 4. **Design A end to end:** Ask Isabelle or a Swarm client closes the golden hole live through the bridge, with Sledgehammer/try0 insert. *(built; rehearsal on Apéry pending)* **Design B:** `revamp` server with `claim` writing `claims.json`, and either Beam `run_at` or Isabelle-MCP evaluate; one node closed through a PR and the gate (items 7/S7, 12). *(not started)*
 5. The planted statement-weakening rejection (item 16) and the planted-axiom CI fixture (item 6). *(not started)*
 6. At least 6 of the 12 Apéry nodes green. *(not started)*
@@ -181,11 +181,11 @@ For the live beat the golden hole has `sorry` on its own line and we say so; the
 
 ### OUT, stated plainly
 
-- **SML→OCaml port.** Years of work; Shibboleth drops infix declarations (Isabelle has 106; `|>` about 11k uses), sharing and opaque signatures. One roadmap line at most.
+- **SML→OCaml port.** Years of work; Shibboleth drops infix declarations (Isabelle has 106; `|>` about 11k uses), sharing and opaque signatures. One roadmap line at most (a measured experiment on `src/Tools/Metis` after the hackathon).
 - **Isar syntax, the kernel, HOL, new keywords, or patches to Isabelle's language server.** The extension works around server bugs on the client side (HTML→text, `vscode_caret_perspective=0`) and never patches.
 - **A Real Analysis speed-run.** Apéry and the ζ(5) blueprint replace it.
 - **A third-party editor extension in the demo path.** We used to plan around yfprojects (Marketplace pin, `setup.sh` install); we now ship our own extension, so there is no pin and no companion. Ideas are ported with credit.
-- **Forking or vendoring** Isabelle's own extension or PIDE MCP.
+- **Forking or vendoring** Isabelle's own extension (its Scala.js build cannot run in npm CI) or PIDE MCP.
 - **A human and an agent sharing one *headless* prover.** *Updated:* sharing the **editor's** session is now the live demo (Design A: the bridge drives the extension's own prover through VS Code, Isabelle unchanged). Headless workers (Design B) still each get their own prover, and files on disk are the only state they share.
 - **Porting to Isabelle2026** before its release. **Using the "Prove2Me" name.**
 
@@ -196,7 +196,7 @@ For the live beat the golden hole has `sorry` on its own line and we say so; the
 **As of 17 Oct 2026** a proof is *claimed*: Fauzan's Zenodo preprint of 17 Sep 2026, **not peer-reviewed**, authorship questioned; **machine-checked twice in Lean 4** (`danromik/zeta5-irrationality`, taking the prime number theorem as an axiom; `mo271/zeta5`, standard axioms only); DeepMind's formal-conjectures marks it solved. So it is not an open problem we could "attack", and it is far beyond 24 hours (about 29k Lean lines; the AFP ζ(3) entry is 2,079 lines).
 
 **The realistic substitute:**
-1. **Apéry's series, the must-finish target:** $\zeta(3)=\tfrac52\sum_{n\ge1}\frac{(-1)^{n-1}}{n^3\binom{2n}{n}}$. Not in `afp-2026-10-16` (grep); about 12 nodes B1–B12 on plain `HOL`; main theorem over `suminf (λn. 1/(n+1)^3)`; the bridge to the AFP's `zeta 3` in `heavy/` only.
+1. **Apéry's series, the must-finish target:** $\zeta(3)=\tfrac52\sum_{n\ge1}\frac{(-1)^{n-1}}{n^3\binom{2n}{n}}$. Not in `afp-2026-10-16` (grep; its status in Mathlib is unverified); about 12 nodes B1–B12 on plain `HOL`; main theorem over `suminf (λn. 1/(n+1)^3)`; the bridge to the AFP's `zeta 3` in `heavy/` only.
 2. **The ζ(5) blueprint skeleton, partial by design:** about 27 statements following the preprint's numbering, organised along mo271's Apache-2.0 module list (structure only, credited), plus `irrationality_criterion`; Romik cited, nothing taken; top-level assembly proved; leaves filled live.
 
 Slide wording: *"To our knowledge, the first Isabelle blueprint of the September 2026 ζ(5) proof. That proof is a preprint, verified twice in Lean and not yet peer-reviewed. One of the two Lean proofs takes the prime number theorem as an axiom; in Isabelle it is the 2018 AFP theorem `θ_asymptotics`."*
@@ -338,23 +338,23 @@ Edge kinds: `uses` from `Thm_Deps.thm_deps`; `uses_def` from constants in the st
 |---|---|---|
 | `missing` | In `blueprint.yaml`, no Isabelle fact yet | blue border |
 | `defined` | A constant or definition | box shape |
-| `sorry` | The node's **own** proof has a hole. Primary rule (`record_proofs = 1`, positioned `skip_proof` oracles): its `skip_proof` oracles minus the union of `all_oracles` over its named dependencies is non-empty. Fallback if the item 6 spike fails: a lexical scan of the proof span following Isar nesting, finding `sorry` or `\<proof>` outside `text` and comments. | red border |
+| `sorry` | The node's **own** proof has a hole. Primary rule (`record_proofs = 1`, which records each oracle's position without proof terms; by default Pure's `ML_Bootstrap.thy` sets `Proofterm.proofs := 0`, every `sorry` collapses into one unpositioned `skip_proof` entry, and the kernel data alone cannot tell a node's own hole from an inherited one): its `skip_proof` oracles minus the union of `all_oracles` over its named dependencies is non-empty. Fallback if the item 6 spike fails: a lexical scan of the proof span following Isar nesting, finding `sorry` or `\<proof>` outside `text` and comments. | red border |
 | `proved` | No hole of its own, but rests on a `sorry` somewhere below | green fill |
 | `fully_proved` | No oracles anywhere below | dark-green fill |
 | `oracle` | Depends on an oracle other than `skip_proof` | solid red, untrusted |
 
-**`out/claims.json` (advisory sidecar, `contracts/claims.schema.json`; not part of C1, never committed):**
+**`out/claims.json` (advisory sidecar; schema `contracts/claims.schema.json` with `contracts/README.md` and `contracts/examples/claims.json`, already on `feat/proofmap`; not part of C1; the generated file is never committed):**
 
 ```jsonc
 { "claims": [ { "id": "Apery.Bounds.linear_form_small", "pr": 58,
                 "branch": "agent/linear-form-small", "since": "2026-10-17T11:49:12Z" } ] }
 ```
 
-Written by `claim`; entries removed by `verify` on success and by the PR-closed path (§6.1). The viewer overlays a "claimed" badge with the PR link and `since`; with `isabelleRevamp.proofMap.followAgent` it keeps the claimed node in view and animates the status change. Nothing reads it for decisions: `next_holes` only demotes claimed holes, and the lock is still the draft PR.
+Only `id` is required by the schema (`pr` integer ≥ 1, `branch`, `since` optional; `additionalProperties: false`), and the viewer must work when the file is absent. Written by `claim`; entries removed by `verify` on success and by the PR-closed path (§6.1). The viewer overlays a "claimed" badge with the PR link and `since`; with `isabelleRevamp.proofMap.followAgent` it keeps the claimed node in view and animates the status change. Nothing reads it for decisions: `next_holes` only demotes claimed holes, and the lock is still the draft PR.
 
 **Viewer events feed and replay (item 10):** the viewer keeps the last N `dag.json` snapshots in memory and writes `out/snapshots/<generated_at>.json`; each refresh emits events (node proved, node regressed, statement changed, new claim, claim released). Regression and statement-change events are shown as warnings: the same two conditions the FR4 audit fails on, mirrored on the viewer side so the audience sees them before CI does. `proofMap.openSnapshot` replays a saved snapshot for the demo.
 
-**Committed files owned by humans:** `thys/<S>/statements.lock` (`{id, statement_sha1}` per blueprint node); `thys/<S>/axioms.allow`; both regenerated by `revamp map lock` only in human PRs labelled `statement-change`, agents never touch them and CI enforces it; `thys/<S>/blueprint.yaml` (C3: `{label, isabelle, title, nl, paper_ref, owner, declared_uses}`). Generated `dag.json`, `claims.json` and snapshots are never committed.
+**Committed files owned by humans:** `thys/<S>/statements.lock` (`{id, statement_sha1}` per blueprint node); `thys/<S>/axioms.allow` (the session's allowed axioms: definitions, `type_definition_*`, the overloaded `_def_raw` axioms from `instantiation`; the gate fails on any other); both regenerated by `revamp map lock` only in human PRs labelled `statement-change`, agents never touch them and CI enforces it; `thys/<S>/blueprint.yaml` (C3: `{label, isabelle, title, nl, paper_ref, owner, declared_uses}`). Generated `dag.json`, `claims.json` and snapshots are never committed.
 
 ### 6.3 Hover and docstring extraction (C2, `contracts/docs.schema.json`)
 
@@ -395,15 +395,15 @@ isabelle-revamp/
 ├── .vscode/ ✓  settings.json (isabelleRevamp.executable, Swarm_solution hidden) · launch.json (F5) · tasks.json   (Leo)
 ├── .claude/    settings.json (deny rules, §11) · skills/isabelle-revamp/SKILL.md            (ark / retinapeg, items 1, 12)
 ├── .github/    workflows/{ci,heavy,cd-main}.yml · actions/setup-isabelle/ · ruleset-main.json · CODEOWNERS · templates (ark, item 2)
-├── contracts/  dag/docs/blueprint/claims schemas · mcp-tools.json · examples/                            (all four, item 3)
-├── extension/ ✓ package.json (publisher hymanimy, main ./out/extension.js) · src/*.ts · syntaxes/ · language-configuration.json
+├── contracts/  dag/docs/blueprint/claims schemas · mcp-tools.json · examples/  (all four, item 3; README, claims schema + example on feat/proofmap)
+├── extension/ ✓ package.json (publisher hymanimy, main ./out/extension.js) · README.md · src/*.ts · syntaxes/ · language-configuration.json
 │               test/*.cjs (VS Code acceptance) · test/unit_*.cjs (no VS Code) · test/fixtures/ · THIRD_PARTY_NOTICES.md
 │               ── Leo (UX, bridge, swarm, ask, symbols, goals, decorations, sledgehammer); ark for src/hover/ (item 9) and
-│                  src/proofMap/ + the webview bundle (item 10). No vscode/ directory exists or will.
-├── mcp/ ✓      server.py (the bridge, FastMCP) · check_live.py · check_swarm.py · requirements.txt                 (Leo)
+│                  src/map/ + webview/map/ + esbuild.mjs (item 10, on feat/proofmap). No vscode/ directory exists or will.
+├── mcp/ ✓      server.py (the bridge, FastMCP) · README.md · check_live.py · check_swarm.py · requirements.txt     (Leo)
 ├── examples/ ✓ Sqrt2.thy · Demo.thy · Swarm.thy · Swarm_solution.thy · Swarm_claude.thy: the extension's demo theories,
 │               never in a ROOT; tests compare Sqrt2.thy byte for byte                                            (Leo)
-├── scripts/ ✓  check_m3..m9a.sh · check_{quickwins,symbols,goals,decorations,sledgehammer}.sh · lsp_probe.py ·
+├── scripts/ ✓  check_m3..m9a.sh · check_{quickwins,symbols,goals,goals2,decorations,sledgehammer}.sh · lsp_probe.py ·
 │               sledgehammer_probe.py (Leo)  ·  ci/lint.sh · isa2uni (ark)  ·  setup.sh · doctor.sh · demo-smoke.sh (retinapeg, item 13)
 ├── docs/ ✓     DEMO.md · PROGRESS.md · PAINPOINTS.md · PROTOCOL_NOTES.md · SWARM_PROMPT.md · CODEX_PROMPT.md · plans/ (exist)
 │               decisions/ADR-000{1..7} · design/ui.md (Alex) · demo-script.md (Alex) · agent-eval.md (retinapeg) · DEPENDENCIES.md
@@ -430,7 +430,7 @@ CODEOWNERS matches the owners above; `/contracts/` is owned by all four. Informa
 
 **Bootstrap, re-baselined:**
 1. ✓ Commit 0 (`PLAN.md`, `README.md`) and the four `proto/*` branches. ✓ PRs #1, #2, #5 merged.
-2. **Merge PR #6 (`integrate/all`) as a merge commit** once the five feature branches and the adversarial review are in; this is the one non-squash merge, done before the squash-only setting is applied. It brings `extension/`, `mcp/`, `examples/`, `scripts/check_*`, the docs, `AGENTS.md`, `CLAUDE.md` and both plans (#3, #4 close with it).
+2. **Merge PR #6 (`integrate/all`) as a merge commit** once the adversarial review of the five merged feature branches is in; this is the one non-squash merge, done before the squash-only setting is applied. It brings `extension/`, `mcp/`, `examples/`, `scripts/check_*`, the docs, `AGENTS.md`, `CLAUDE.md` and both plans (#3, #4 close with it).
 3. Issues `P1`–`P20` and the labels (§0), **before** the skeleton PR.
 4. The skeleton PR (plan item 1): CONTRIBUTING, LICENSE, CODEOWNERS, templates, `.gitattributes`, `.isabelle-version`, `deps.lock`, `.claude/settings.json`, `.mcp.json.example`, `thys/ROOTS` + `thys/Smoke/`, ADR-0001–0007, `contracts/README`. Merged by T+5:30.
 5. Draft PRs from `proto/*` (table below). Always `git add <paths>` / `git checkout <branch> -- <paths>`, never `git add -A`.
@@ -452,7 +452,7 @@ CODEOWNERS matches the owners above; `/contracts/` is owned by all four. Informa
 |---|---|
 | Only your own directory | You, at the next train. A teammate's 👀 within one train is expected, not blocking. |
 | Someone else's directory, `.github/`, `scripts/` | That directory's owner; if asleep for more than one train, any awake teammate. |
-| `extension/` UX (anything a user sees) | Leo merges; **Alex signs off the look** from screenshots. ark's `src/hover/` and `src/proofMap/` need Leo's 👀 for conflicts with the goals and symbols code. |
+| `extension/` UX (anything a user sees) | Leo merges; **Alex signs off the look** from screenshots. ark's `src/hover/` and `src/map/` need Leo's 👀 for conflicts with the goals and symbols code. |
 | `contracts/`, or `statement-change` (lockfiles) | Every affected owner. **Statements always need Alex.** |
 | `agent-generated` proofs under `thys/` or `heavy/` | The human who launched the agent, **only if** the map audit is green |
 | `agent-generated` code (not `.thy`), including the `feat/*` branches | A *different* human (the adversarial review for the 18 items) |
@@ -466,8 +466,8 @@ Agents never merge: `.claude/settings.json` denies `gh pr merge`, `gh api` and p
 
 | Branch | Contents | Draft PR for | Owner, and what to change |
 |---|---|---|---|
-| `integrate/all` (PR #6) | Leo's M1–M9 extension, `mcp/`, `examples/`, `scripts/check_*`, docs; #3, #4; the five `feat/*` branches once merged | plan items 4, 9/10 prerequisites, 13.1 | the integrator (ark); merge commit, then adversarial review fixes as follow-up squash PRs |
-| `feat/proofmap` | `extension/src/proofMap/`, webview bundle, settings, snapshots; `contracts/claims.schema.json` example | item 10 | ark; lands as `extension: ProofMap viewer` after #6 |
+| `integrate/all` (PR #6) | Leo's M1–M9 extension, `mcp/`, `examples/`, `scripts/check_*`, docs; #3, #4; the five `feat/*` branches (merged at T+4:35) | plan items 4, 9/10 prerequisites, 13.1 | the integrator (ark); adversarial review fixes as commits on the branch, then the merge commit; anything found later is a follow-up squash PR |
+| `feat/proofmap` | `extension/src/map/`, `extension/webview/map/` + `esbuild.mjs`, `media/`, settings, snapshots, `test/{unit_,perf_,}proofmap.cjs`, `scripts/check_proofmap.sh`; `contracts/{README.md, claims.schema.json, examples/claims.json}` | item 10 | ark; committed (`8b770e5`); merged into `integrate/all` while #6 is open, else lands as `extension: ProofMap viewer` after #6 |
 | `proto/ci` | `.github/**` | item 2 | ark: repo name (`hymanimy` → `$R`), 2025-2, the §9 filters, `vscode` job → `extension/`, cut `ci.yml` to `changes`, `lint`, `isabelle`, `vscode`, `ci-ok` |
 | `proto/proofmap` | `proofmap/isabelle/{DAG_Export.thy, ROOT.template}`, `proofmap/prototypes/`, `tools/tests/fixtures/ax/` | item 6 | ark; golden C1 example from the Demo export |
 | `proto/proofmap` | `thys/Demo/{ROOT, Top.thy, Basics.thy}` | item 5 | Alex; add `record_proofs = 1` and the item 5 cases |
@@ -483,7 +483,7 @@ Each owner takes only their item's paths onto a fresh branch (`git checkout orig
 | Workflow | Required? | Purpose | Target time |
 |---|---|---|---|
 | `ci.yml` → `ci-ok` | **The only required check** | `lint` (always); `isabelle` (one export build + map audit); `py` (`tools/` and an import check of `mcp/`); `beam` smoke; **`vscode`: `extension/` compile + unit tests + vsix**. Each job arrives with the PR that adds its directory; `vscode` arrives with the CI PR because `extension/` already exists. | ≤ 3 min docs-only; ≤ 5 min warm; ≤ 8 min cold |
-| `heavy.yml` | Never required | AFP/HOL-Analysis sessions (ζ(5), Apéry bridge, S4's chain); strict Apéry status; AFP `Zeta_3_Irrational` export at scale; **headless acceptance:** stock VS Code + Isabelle under `xvfb-run` running `scripts/check_m3.sh` and the five `check_<feature>.sh`, serialised; COULD: RC4 canary | ≤ 90 min |
+| `heavy.yml` | Never required | AFP/HOL-Analysis sessions (ζ(5), Apéry bridge, S4's chain); strict Apéry status; AFP `Zeta_3_Irrational` export at scale; **headless acceptance:** stock VS Code + Isabelle under `xvfb-run` running `scripts/check_m3.sh` and the six `check_<feature>.sh`, serialised; COULD: RC4 canary | ≤ 90 min |
 | `cd-main.yml` | No | On a green `ci` run on `main`: replace the `main-latest` pre-release (vsix, dag.json) | about 1 min |
 
 **The headless rig is the model for `heavy.yml`.** In the planning session's container, a wrapper (`xvfb` + `--no-sandbox` around a downloaded stock VS Code) behaves like the VS Code application executable that `scripts/check_m*.sh` take as `$1`; with Isabelle2025-2 and the HOL heap it runs every `check_m*.sh` and every `check_<feature>.sh` (each run starts a full Isabelle, about 3 GB and 2–5 min, so runs are serialised with `flock`). **It is not on any team laptop.** Acceptance evidence for the 18 items (§13.1) comes from it: the `PROGRESS.md` entries quote its PASS lines. `heavy.yml` reproduces it with `actions/setup-isabelle` (HOL prebuilt), a cached VS Code tarball and `xvfb-run -a`; never in the required gate (too slow, too much RAM).
@@ -657,7 +657,7 @@ The VS Code acceptance tests (`extension/test/m*.cjs`, `<feature>.cjs`) are **no
       - run: npx --prefix extension @vscode/test-electron download   # cached stock VS Code; the wrapper adds --no-sandbox
       - run: |
           for s in scripts/check_m3.sh scripts/check_quickwins.sh scripts/check_symbols.sh scripts/check_goals.sh \
-                   scripts/check_decorations.sh scripts/check_sledgehammer.sh; do
+                   scripts/check_goals2.sh scripts/check_decorations.sh scripts/check_sledgehammer.sh; do   # + check_proofmap.sh with item 10
             xvfb-run -a timeout 900 bash "$s" "$VSCODE_APP" || exit 1      # one Isabelle each, about 3 GB, 2–5 min
           done
 ```
@@ -708,7 +708,7 @@ Leo: extension acceptance (headless rig, heavy.yml) ◄─ ark: CI vscode job �
 | Contracts, ruleset, `.github/`, `.claude/`, pins, CLAUDE.md, SKILL.md | Led by humans | all affected owners | — |
 | Merge order, demo script, slide claims | Humans only | — | — |
 
-**Guardrails** (§11A has the design): agent count k ≤ 1 at 16 GB (with `export --watch` paused during `verify`), k ≤ 3 at 32 GB, each headless worker about 2.2 GB plus 2–4 GB per batch build; Design A adds no prover but is ≤ 2 clients per window; per-hole cap 20 min and a turn cap, then `needs-human`; two strikes; no laundering (`verify`); no self-merge (`.claude/settings.json` denies `Bash(gh pr merge:*)`, `Bash(gh api:*)`, `Bash(git push origin main*)`; `run_holes.sh` passes the same as `--disallowedTools`; Ask Isabelle allows only the seven bridge tools and disables built-in tools, skills and hooks for the child); isolation (one worktree, one `.mcp.json`, one Isabelle home per headless worker); kill switch (stop `run_holes.sh`, close `agent/*` PRs; **Stop** in Ask Isabelle kills the child and its MCP process group; a ten-minute deadline does the same); tagging (`agent-generated`).
+**Guardrails** (§11A has the design): agent count k ≤ 1 at 16 GB (with `export --watch` paused during `verify`), k ≤ 3 at 32 GB, each headless worker about 2.2 GB plus 2–4 GB per batch build; Design A adds no prover but is ≤ 2 clients per window; per-hole cap 20 min and a turn cap, then `needs-human`; two strikes; no laundering (`verify`); no self-merge (`.claude/settings.json` denies `Bash(gh pr merge:*)`, `Bash(gh api:*)`, `Bash(git push origin main*)`; `run_holes.sh` passes the same as `--disallowedTools`; Ask Isabelle allows only the seven bridge tools and disables built-in tools, slash commands and hooks for the child: `--tools ''`, `--allowedTools mcp__isabelle__*`, `--disable-slash-commands`, `disableAllHooks`); isolation (one worktree, one `.mcp.json`, one Isabelle home per headless worker); kill switch (stop `run_holes.sh`, close `agent/*` PRs; **Stop** in Ask Isabelle kills the child and its MCP process group; a ten-minute deadline does the same); tagging (`agent-generated`).
 
 **SKILL.md rules:** try candidates with `run_at` before editing (B) or read `open` immediately before every `edit` (A: stale versions are rejected); on a one-line stub pass `prefix`; write ASCII escapes only; never edit a statement, ROOT, lockfile or `axioms.allow`; never use `sorry`, `\<proof>`, `oops`, ML commands, `tactic`/`raw_tactic`, `axiomatization`, `oracle`; never close a hole by citing another `sorry`'d lemma; never merge, never `gh api`, never push to `main`; one hole per PR; a new top-level lemma goes into the PR body as a sketch. **Coordinates differ:** the bridge is zero-based (lines and UTF-16 columns); Beam, Isabelle-MCP and `revamp` are 1-based.
 
@@ -793,7 +793,7 @@ after R rounds, 20 min, or 2 strikes ─► B: label needs-human and summarise; 
 ### Retrieval: hybrid search for premises (GraphRAG over the ProofMap)
 
 1. **Query transformation:** the goal at the hole plus the node's `nl`; a HyDE-style sketch adds constant names and lemma-name fragments.
-2. **Hybrid retrieval with reciprocal-rank fusion:** structural (`find_theorems_at` / `isabelle_find_theorems` on head constants; in A, Isabelle's own `find_theorems` typed into the buffer and read from Messages), lexical (`docs_search`, BM25 over `docs.jsonl`), dense (stretch, after the cut line), and the prover's own relevance filter (Sledgehammer's MePo/MaSh, free, now one click away in the editor).
+2. **Hybrid retrieval with reciprocal-rank fusion:** structural (`find_theorems_at` / `isabelle_find_theorems` on head constants; in A, Isabelle's own `find_theorems` typed into the buffer and read from Messages), lexical (`docs_search`, BM25 over `docs.jsonl`), dense (stretch, after the cut line: embeddings of statement plus doc over HOL and the pinned AFP), and the prover's own relevance filter (Sledgehammer's MePo/MaSh, free, now one click away in the editor).
 3. **Graph context:** walk the ProofMap to declared and actual dependencies; include their statements and 1–2 proved siblings as worked examples.
 4. **Budget:** about 30 premises and 2 example proofs per worker.
 
@@ -859,11 +859,11 @@ Wall clock = 09:39 BST + T. **Demo at T+24 (about 09:40 BST Sunday) is an assump
 
 | Spike | Owner | Pass | Fallback | Status |
 |---|---|---|---|---|
-| S0 install on all 4 machines | everyone | `isabelle version` = Isabelle2025-2; HOL needs no rebuild; `npm ci --prefix extension` + F5 shows the Goals view | a machine under 16 GB does headless/CI work only; share the tarball | Leo's Mac and the planning container done; others unknown |
-| S1 Isabelle in CI | ark | `ci-ok` green on the CI PR; warm ≤ 5 min | container job on `makarius/isabelle:Isabelle2025-2` | not run |
+| S0 install on all 4 machines | everyone | `isabelle version` = Isabelle2025-2; HOL needs no rebuild; `npm ci --prefix extension` + F5 shows the Goals view | a machine under 16 GB does headless/CI work only; share the tarball; a Codespace or VM | Leo's Mac and the planning container done; others unknown |
+| S1 Isabelle in CI | ark | `ci-ok` green on the CI PR; warm ≤ 5 min | container job on `makarius/isabelle:Isabelle2025-2` (`--user root`, `docker/login-action`) | not run |
 | S2 editor | *retired:* our extension replaced the Marketplace check | — | — | superseded by M1–M9 |
 | S3 Beam on 2025-2 | retinapeg | compiles; failing `by blast` → `error`; loop → `timeout`; md5 unchanged | Isabelle-MCP edit-then-evaluate (S7), else PIDE MCP `get_state` + edit-then-check | not run |
-| S4 AFP heaps | Alex, background from T+4:45 | the Prime_Number_Theorem chain builds locally ≤ 60 min and in `heavy.yml` | ζ(5) skeleton over HOL-Analysis `suminf` with a red bridge node | not started |
+| S4 AFP heaps | Alex, background from T+4:45 | the Prime_Number_Theorem chain (through `Zeta_Function` and HOL-Analysis/`Complex_Analysis`; peaks around 5 GB plus the JVM) builds locally ≤ 60 min and in `heavy.yml`; heaps are architecture-specific, so CI heaps cannot replace the Macs' | ζ(5) skeleton over HOL-Analysis `suminf` with a red bridge node | not started |
 | S5 export at scale (after S4) | ark | AFP `Zeta_3_Irrational`: 99 facts `fully_proved` ≤ 2 min; save-to-green measured on Demo now, Apéry in item 10 | own sessions only; memoise by serial; replay snapshots if > 30 s | not run |
 | S6 hover definition lookup + marker | ark (the card layer), 10 min | `executeDefinitionProvider` on `geometric_sums` returns a location under `$ISABELLE_HOME/src` (the extension's hover middleware already sees the server's hover); the ASCII marker is accepted and parsed | name lookup only; drop doc source 1 | not run |
 | S7 Isabelle-MCP on 2025-2 | retinapeg, 20 min, with S3 | `uv tool install isabelle-mcp==0.6.0`; launch HOL on `thys/`; Demo's `sorry` lines reported; goal at line 12; file stays ASCII | drop Isabelle-MCP | not run |
@@ -875,16 +875,16 @@ Wall clock = 09:39 BST + T. **Demo at T+24 (about 09:40 BST Sunday) is an assump
 |---|---|---|---|
 | Leo | 9:30–12:30 | 19:09–22:09 | the dry run (13:00), the cut line, both rehearsals, the demo |
 | ark | 15:30–18:30 | 01:09–04:09 | the cut line (tags `demo-v1` before sleeping), the freeze, rehearsals |
-| Alex | 18:00–21:00 | 03:39–06:39 | the cut line, the freeze, rehearsals, the pitch |
-| retinapeg | 18:30–21:30 | 04:09–07:09 | the cut line, the freeze, the SHOULD list, the backup machine |
+| Alex | 18:00–21:00 | 03:39–06:39 | the cut line, rehearsals, the pitch (asleep over the freeze: his ζ(5) merges are in by 18:00) |
+| retinapeg | 18:30–21:30 | 04:09–07:09 | the cut line, the SHOULD list (merged by 18:30, before the freeze), the backup machine |
 
-Between 18:30 and 21:00 Leo and ark are the two awake. The Beam/MCP owner is awake until the freeze and from 21:30; the video is recorded by Leo at T+19:30 (05:09), and ark fixes what it finds.
+Between 18:30 and 21:00 Leo and ark are the two awake, so they hold the freeze (19:00); the Beam/MCP owner sleeps over it (18:30–21:30) and is back for the rehearsals; the video is recorded by Leo at T+19:30 (05:09), and ark fixes what it finds.
 
 | T+ (BST) | Alex | ark | retinapeg | Leo | Gate / milestone |
 |---|---|---|---|---|---|
-| **4:30–5:15** (14:09–14:54) | Archive his repo (D1); S4 in the background; `thys/Demo` from `proto/proofmap` (item 5) | Issues `P1`–`P20`, labels; skeleton PR; merge #6 as a merge commit; D2, public, invite Leo | S3 + S7; draft C4 (`isabelle-beam`, `isabelle-lsp`, the bridge as built) | Items 15–16 committed; review the five-branch merge; run `check_m3` + the five checks on `integrate/all` | **Train 7 (5:15): GO/NO-GO (S3/S7); C1–C3 frozen; the 18 items on `main`** |
+| **4:30–5:15** (14:09–14:54) | Archive his repo (D1); S4 in the background; `thys/Demo` from `proto/proofmap` (item 5) | Issues `P1`–`P20`, labels; skeleton PR; merge #6 as a merge commit; D2, public, invite Leo | S3 + S7; draft C4 (`isabelle-beam`, `isabelle-lsp`, the bridge as built) | Review the five-branch merge on `integrate/all` (items 15–16 are in); re-run `check_m3` + the six checks on his Mac | **Train 7 (5:15): GO/NO-GO (S3/S7); C1–C3 frozen; the 18 items on `main`** |
 | 5:15–6:45 (14:54–16:24) | Item 11: Apéry statements B1–B12 (`sorry` on its own line), `blueprint.yaml`, `statements.lock`, `axioms.allow` | CI PR (item 2) green and merged; caches seeded; ruleset + squash-only; item 3 contracts + `tools/` skeleton with the `claims` schema | Beam in the repo and CI (item 7) **or** Isabelle-MCP smoke; docs index as `tools/revamp/docs/` (item 8) with `data/isar-ref.jsonl` | Adversarial-review fixes for the 18 items (one squash PR per branch); `demo-smoke.sh` v0 with retinapeg (item 13) | **Train 8 (6:00): C4 frozen.** **Train 9 (6:45)** |
-| 6:45–9:00 (16:24–18:39) | Review contracts; first Apéry proofs by hand; `ui.md` v0 with the screenshots from the five branches | Item 6 export: the 15-minute `record_proofs` spike, classifier fix, audit, IDs; S5 on Demo | Item 12 `revamp` server with `claim` → `claims.json`, SKILL.md; `run_holes.sh` v0 (item 14) | Item 10 viewer lands (from `feat/proofmap`): commands, settings, legend, watcher, claims badge, events, snapshots; then item 9 hover cards with ark | **M1 (9:00 = 18:39): vertical slice on `main`.** Apéry → `dag.json` (CI artifact) → viewer; `run_at`/`evaluate` from Claude Code; `docs.jsonl` written |
+| 6:45–9:00 (16:24–18:39) | Review contracts; first Apéry proofs by hand; `ui.md` v0 with the screenshots from the five branches | Item 6 export: the 15-minute `record_proofs` spike, classifier fix, audit, IDs; S5 on Demo | Item 12 `revamp` server with `claim` → `claims.json`, SKILL.md; `run_holes.sh` v0 (item 14) | Reviews and lands ark's item 10 viewer from `feat/proofmap` (as `extension/` owner: conflicts with the goals and symbols code); then item 9 hover cards with ark (ark owns both) | **M1 (9:00 = 18:39): vertical slice on `main`.** Apéry → `dag.json` (CI artifact) → viewer; `run_at`/`evaluate` from Claude Code; `docs.jsonl` written |
 | 9:00–12:30 (18:39–22:09) | Drive agents on Apéry leaves: Design A in the editor, Design B one at a time on 16 GB; review proofs | Hover cards (item 9) finished; viewer polish on Apéry; save-to-green measured; S8 | B end to end: one node closed through a PR and the gate; pain points → issues; `setup.sh` v0 by 12:00 | **asleep 9:30–12:30** | **M2 (12:30 = 22:09): both designs end to end; cards and viewer on Apéry; ≥ 4 Apéry nodes green** |
 | 12:30–15:00 (22:09–00:39) | Planted demo PR on `demo/weaken-…` (item 16); ζ(5) definitions by hand; review waves | Accept `setup.sh` v0 on a clean machine; cut-line fixes only | Cut-line fixes; launch the overnight B wave (≥ 32 GB only) | **Dry run at 13:00 (22:39)** of all of §2 on the demo machine; golden hole rehearsal | **CUT LINE (15:00 = 00:39): full run on `main`, tag `demo-v1`, video v0** |
 | 15:00–19:00 (00:39–04:39) | ζ(5) leaves with agents; demo script; replay snapshots (asleep from 18:00) | (asleep 15:30–18:30) | SHOULD: full `setup.sh` + `doctor.sh`, `docs_search`, `claims.json` prune path, `heavy.yml` acceptance (asleep from 18:30) | Items 15–16 polish, "Read as paper" behind `isabelleRevamp.readAsPaper`; prepare the video run | **FEATURE FREEZE (19:00 = 04:39).** Later merges are additive and behind a setting. |
@@ -901,9 +901,9 @@ Between 18:30 and 21:00 Leo and ark are the two awake. The Beam/MCP owner is awa
 
 Issues are created as **`P<N>: <title>`** (PRs occupy #1–#6, so numbers will not match) and referenced as "plan item N"; PRs say "Closes #M (plan item N)". Status at T+4:30 in bold.
 
-1. **Bootstrap and canonical repo** (ark) — **NOT STARTED** (commit 0 and `proto/*` done; PRs #1, #2, #5 merged)
-   - Issues `P1`–`P20` and the seven labels exist. PR #6 is merged as a merge commit; the skeleton PR is merged (CONTRIBUTING, LICENSE, CODEOWNERS, templates, `.gitattributes`, `.isabelle-version`, `deps.lock`, `.claude/settings.json` with the three deny rules, `.mcp.json.example`, `thys/ROOTS` + `thys/Smoke/`, ADR-0001–0007, `contracts/README`).
-   - Repo renamed (or ADR-0001 records why not) and public; Leo, Alex and retinapeg have accepted invites and posted the per-machine checklist; Leo's remote points at `$R`; the `hymanimy/isabelle-revamp` README points here and that repo is archived; `--allow-update-branch=false` set; nothing large was ever pushed (the blob-size check prints nothing; `git ls-files | grep -E '\.(vsix|db|jar)$|heaps/'` prints nothing).
+1. **Bootstrap and canonical repo** (ark) — **PARTLY DONE** (commit 0, `proto/*` and PRs #1, #2, #5 are in; nothing else)
+   - Issues `P1`–`P20` and the eight labels exist. PR #6 is merged as a merge commit; the skeleton PR is merged (CONTRIBUTING, LICENSE, CODEOWNERS, templates, `.gitattributes`, `.isabelle-version`, `deps.lock`, `.claude/settings.json` with the three deny rules, `.mcp.json.example`, `thys/ROOTS` + `thys/Smoke/`, ADR-0001–0007, `contracts/README`).
+   - Repo renamed (or ADR-0001 records why not) and public; Leo, Alex and retinapeg have accepted invites and posted the per-machine checklist; Leo's remote points at `$R`; the `hymanimy/isabelle-revamp` README points here and that repo is archived; `--allow-update-branch=false` set; nothing large was ever pushed (the blob-size check prints nothing; GitHub rejects blobs over 100 MB and anything pushed stays in history; `git ls-files | grep -E '\.(vsix|db|jar)$|heaps/'` prints nothing).
 2. **CI gate, setup-isabelle, ruleset** (ark; from `proto/ci`) — **NOT STARTED**
    - Ships `changes`, `lint`, `isabelle` (build only), `vscode` (`extension/`: `npm ci`, `npm run compile`, `node test/unit_*.cjs`, vsix) and `ci-ok`, plus `setup-isabelle`, `heavy.yml` (with the `acceptance` job), `cd-main.yml`, `ruleset-main.json`, no `hymanimy` left. Green on its own PR; `main` stays green.
    - actionlint clean; docs-only ≤ 3 min; `thys/` ≤ 5 min warm / ≤ 8 min cold; `vscode` ≤ 4 min.
@@ -911,24 +911,24 @@ Issues are created as **`P<N>: <title>`** (PRs occupy #1–#6, so numbers will n
    - Agent lint in place before M2 (the list in §9).
    - The `isabelle-dist-Linux-X64-Isabelle2025-2` cache exists after one `workflow_dispatch`; the ruleset is active (direct push rejected, squash only, head branches deleted, no "Update branch").
 3. **Contracts v1 and the `tools/` skeleton** (ark leads; all four approve) — **NOT STARTED**
-   - C1–C4 schemas and goldens with `schema_version: 1`; **plus `claims.schema.json`** and its golden; C4 records the bridge's seven tools as implemented (zero-based) and `isabelle-beam`/`isabelle-lsp`/`revamp` (1-based). `tools/` skeleton (`pyproject.toml`, plugin CLI, `revamp.contracts`), the `py` job. C1–C3 frozen at Train 7, C4 at Train 8.
+   - C1–C4 schemas and goldens with `schema_version: 1`; **plus `claims.schema.json`** and its golden (already on `feat/proofmap` with `contracts/README.md`: land them with the viewer or here, whichever is first, not twice); C4 records the bridge's seven tools as implemented (zero-based) and `isabelle-beam`/`isabelle-lsp`/`revamp` (1-based). `tools/` skeleton (`pyproject.toml`, plugin CLI, `revamp.contracts`), the `py` job. C1–C3 frozen at Train 7, C4 at Train 8.
 4. **Toolchain on 4 machines and the pain-points log** (retinapeg; everyone) — **PARTLY DONE**
-   - Each machine reports the checklist, `isabelle version`, the HOL no-op build time and F5 of the extension. The demo machine chosen. `docs/PAINPOINTS.md` (33 entries, done) gets severity/OS/step/time-lost per entry where missing, is scrubbed, and each entry becomes an issue (`pain-point` label).
+   - Each machine reports the checklist (RAM, free disk ≥ 15 GB, OS, architecture), `isabelle version`, the HOL no-op build time and F5 of the extension. The demo machine chosen. `docs/PAINPOINTS.md` (35 entries, done) gets severity/OS/step/time-lost per entry where missing, is scrubbed, and each entry becomes an issue (`pain-point` label).
 5. **Demo fixture `thys/Demo`** (Alex; from `proto/proofmap`) — **NOT STARTED**
    - Parent HOL, `options [quick_and_dirty, record_proofs = 1]`; the v1.2 cases (plain `sorry`; inner `have … sorry`; a lemma resting only on a hole; **a lemma with its own `sorry` that also uses a sorry'd lemma**; a `\<proof>` hole; `sorry` in a `text` block and a comment; a proved lemma; a definition; a `text ‹›` doc, an ASCII marker and a `\<comment>`); `EXPECTED.json`; no theory name reused by Apéry; CI green. `examples/Demo.thy` is Leo's and is a different thing (an `examples/` theory named `Demo`, never in a ROOT; the session is `Demo` too, which is confusing but harmless: rename the session to `Fixture` if anyone trips).
 6. **ProofMap export, lock and audit** (ark; Alex reviews the ML; from `proto/proofmap`) — **NOT STARTED**
    - The 15-minute `record_proofs = 1` spike first (ADR-0006 records the classifier chosen); `revamp map export -d thys Demo` validates against C1 with `Session.Theory.fact` IDs; statuses equal `EXPECTED.json` including the mixed case and `\<proof>`; `revamp map next Demo.Top.main_target` ranks `Demo.Basics.dbl_mono_open` first with leverage 3; the export is the only build in the `isabelle` job (one wrapper session; per-session `DAG_Export_<S>.thy` for `heavy/`); `lock`, `audit` (changed hash; the planted `axiomatization where cheat: False` fixture; a new oracle); Demo export ≤ 60 s in CI.
 7. **Beam component** (retinapeg; from `proto/beam`) — **NOT STARTED; may shrink to `run_at` only or be cut (S3/S7)**
-   - Both soundness fixes, LGPL headers, `deps.lock` pin, the `beam` job; the smoke verdicts (`by blast` not `proved`; `by foo` → `error`; `(rule ccontr)+` → `timeout`; md5 unchanged; one-line stub hint and `prefix`); 16 candidates ≤ 3 s; `Beam_<Parent>` template for AFP-based theories (item 15 depends on it, or on Isabelle-MCP's `session_dirs`).
+   - Both soundness fixes, LGPL headers, `deps.lock` pin, the `beam` job; the smoke verdicts (`by blast` not `proved`; `by foo` → `error`; `(rule ccontr)+` → `timeout`; md5 unchanged; one-line stub hint and `prefix`); 16 candidates ≤ 3 s; `Beam_<Parent>` template for AFP-based theories (item 15 depends on it, on PIDE MCP's `session_requirements`, or on Isabelle-MCP's `session_dirs`).
 8. **Docs index and Isar-Ref index** (retinapeg; from `tools/prototypes/`) — **NOT STARTED** (prototype merged in PR #1)
    - `revamp docs index $ISABELLE_HOME/src/HOL thys` validates against C2, ≤ 60 s, prints coverage; `doc_source` right for the three styles including the ASCII marker; `data/isar-ref.jsonl` ≥ 150 entries (retinapeg's whole hover deliverable; he does not edit `extension/`); Markdown conversion unit-tested.
 9. **Hover cards in `extension/`** (ark; Leo reviews) — plan: `docs/plans/vscode-companion.md` §2, with the path change — **NOT STARTED** (the server hover, item 3, is built)
    - A `HoverProvider` next to the existing hover middleware, in `extension/src/hover/`; the §6.3 card and badge; p95 ≤ 150 ms on `geometric_sums`, `append_assoc` and an Apéry lemma with a marker; `simp` and `obtain` show Isar-Ref text; adding a marker and saving updates the card; golden-card unit test in `test/unit_hover.cjs`; light and dark screenshots; no new dependency; settings `isabelleRevamp.hover.{docsIndex,isarRefIndex,definitionTimeoutMs,logTiming}`.
-10. **ProofMap viewer in `extension/`** (ark; Alex signs off the look; Leo reviews) — **IN PROGRESS on `feat/proofmap`** (dependencies added: `cytoscape`, `cytoscape-dagre`, `esbuild`; no commit yet)
+10. **ProofMap viewer in `extension/`** (ark; Alex signs off the look; Leo reviews) — **BUILT on `feat/proofmap`** (commit `8b770e5`; PROGRESS entry "ProofMap viewer (plan item 10)"; not yet on `integrate/all`)
     - Commands `isabelleRevamp.showProofMap`, `showProofMapInNewWindow`, `proofMap.fit`, `proofMap.reload`, `proofMap.openSnapshot`; settings `isabelleRevamp.proofMap.{dagPath,claimsPath,followAgent,autoOpen}`.
-    - Cytoscape + dagre bundled by esbuild (no CDN; CSP `default-src 'none'`, nonce, `style-src 'unsafe-inline'` only because Cytoscape sets inline canvas styles); colours from `--vscode-*` variables; the §6.2 leanblueprint legend; click → file:line; hover → statement and `nl`.
+    - Cytoscape + dagre bundled by esbuild (no CDN; CSP `default-src 'none'`, nonce'd script, `style-src` limited to the webview's own resources and **no `'unsafe-inline'`**: an inert `<meta id="__________cytoscape_stylesheet">` stops Cytoscape injecting its inline stylesheet); colours from `--vscode-*` variables; the §6.2 leanblueprint legend; click → file:line; hover → statement and `nl`.
     - Watcher on `out/dag.json` with debounce and partial-write retry; `claims.json` overlay (badge, PR link, `followAgent`); events feed with regression and statement-change warnings (the FR4 mirror); snapshots to `out/snapshots/` and replay for the demo.
-    - A synthetic 500-node graph in ≤ 2 s (`layout X ms` in the footer); works offline; unit tests for C1 parsing (dangling edge dropped, unknown status rejected), counts, ranking (reproduces `next_sorry.py` on Demo), claims merge and event diffing; a `check_proofmap.sh` acceptance on the headless rig; save-to-green on Apéry measured once item 6's `--watch` exists (≤ 30 s).
+    - **Done:** `unit_proofmap.cjs` (11 checks: parser tolerance, ranking on the 12-node Apéry fixture with `linear_form_small` first at leverage 3, deterministic diffs, regressions, claims, symbols, protocol, CSP); `check_proofmap.sh` on the rig (five commands registered, snapshot, live rewrite through a truncated file, a late `claims.json`, open file:line, pop-out); `perf_proofmap.cjs` (Playwright: 500 nodes / 740 edges in 564–623 ms to first paint, within the 2 s budget; the adversarial 85-rank chain takes 1.9–2.2 s and the status bar warns above 500 nodes); works offline. **Open:** save-to-green on Apéry once item 6's `--watch` exists (≤ 30 s); Alex's sign-off from `.dev-host/proofmap-{dark,light}.png`; merge into `integrate/all`.
 11. **Apéry blueprint statements** (Alex) — **NOT STARTED**
     - `thys/Apery`: parent HOL, imports `Complex_Main`, `options [quick_and_dirty, record_proofs = 1]`; B1–B12 each with a `text ‹›`, a paper reference and a marker; **`sorry` on its own line**; no natural-number subtraction; the main theorem `(λn. (-1)^n / (real (n+1)^3 * real ((2*(n+1)) choose (n+1)))) sums (2/5 * (∑n. 1/real (n+1)^3))` assembled from its children (Alex fixes the indices); `blueprint.yaml`, `statements.lock`, `axioms.allow` committed; ≥ 12 nodes on the map.
 12. **`revamp` MCP server, `claims.json` and SKILL.md** (retinapeg; map functions from item 6) — **NOT STARTED**
@@ -947,7 +947,7 @@ Issues are created as **`P<N>: <title>`** (PRs occupy #1–#6, so numbers will n
 
 ### 13.1 Extension UX: Alex's 18 items (owner Leo; ark backup)
 
-Alex's hands-on feedback, verbatim list below, is **built** on five feature branches in the planning container and is **being integrated** into `integrate/all` now (then an adversarial review and fixes). Nothing is on `integrate/all` or `main` yet. Each branch has a `docs/PROGRESS.md` entry (Changed / Passed / Discovered / Next) and a `scripts/check_<feature>.sh` that passed on the headless rig (§9), with `check_m3.sh` as the regression check; **that rig is the source of acceptance evidence** for these items until `heavy.yml` reproduces it, because no laptop has it. All of them keep ASCII on disk, change no Isabelle file, keep the webview CSP at `default-src 'none'`, and add their settings and commands to `extension/package.json`. Credits for ported pieces are in `extension/THIRD_PARTY_NOTICES.md`.
+Alex's hands-on feedback, verbatim list below, is **built** on five feature branches in the planning container and **merged into `integrate/all`** at T+4:35 (`--no-ff`; the integration entry in `docs/PROGRESS.md` records the conflict resolutions and the PASS counts). The adversarial review and fixes are next; nothing is on `main` yet (PR #6). Each branch has a `docs/PROGRESS.md` entry (Changed / Passed / Discovered / Next) and a `scripts/check_<feature>.sh` (six scripts: `feat/goals` has `check_goals.sh` and `check_goals2.sh`) that passed on the headless rig (§9), with `check_m3.sh` as the regression check; **that rig is the source of acceptance evidence** for these items until `heavy.yml` reproduces it, because no laptop has it. All of them keep ASCII on disk, change no Isabelle file, keep the webview CSP at `default-src 'none'`, and add their settings and commands to `extension/package.json`. Credits for ported pieces are in `extension/THIRD_PARTY_NOTICES.md`.
 
 | # | Item (Alex's words) | Branch · PROGRESS entry | Acceptance (short) | Status |
 |---|---|---|---|---|
@@ -965,12 +965,12 @@ Alex's hands-on feedback, verbatim list below, is **built** on five feature bran
 | 12 | Messages section (value, thm, try0 output beside the goal) | `feat/goals` | A collapsible **Messages** section with the command's writeln/warning/error output, an icon, a left border and a count; `value` output and `try0` sendbacks appear there; `goals_at` returns the texts. | built |
 | 13 | Clear "done" state | `feat/goals` | `No subgoals!` shows a green **✓ No goals — this step is complete** banner; a settled position without a state shows **Not in a proof**; the header badge still distinguishes *unfinished (sorry)*, *Proof error* and *fully checked*. | built |
 | 14 | Header and structure (file:line:col, collapsible goal/facts/messages, coloured `this:` facts) | `feat/goals` | Header `Sqrt2.thy:12:5` with a coloured status badge; collapsible **Goal**, **Facts** (`this:` / `using this:`), **Messages**, **Ask**, with the collapse state persisted; the panel width is sent as the pretty-print margin; the whole open theory is checked (`vscode_caret_perspective=0`). | built |
-| 15 | Pin and pause buttons | `feat/goals` (uncommitted) | **Isabelle: Pin Goal** keeps a goal visible while editing elsewhere (Go to / Unpin per pin, Unpin all); **Toggle Pause Goals** stops following the caret and shows Resume; both in the view title and the header. | in progress |
-| 16 | Copy-to-editor button on messages | `feat/goals` (uncommitted, `insertProof.ts`) | An **Insert** button on sendback messages (e.g. `try0`'s `by simp`) inserts at the end of the command, replacing a following `sorry`; goes through the bridge-safe edit path so versions stay consistent. | in progress |
+| 15 | Pin and pause buttons | `feat/goals` · "Goals sidebar: pin, pause and copy-to-editor" | **Isabelle: Pin Goal** keeps a goal visible while editing elsewhere (Go to / Unpin per pin, Unpin all); **Toggle Pause Goals** stops following the caret and shows Resume; both in the view title and the header; a pin is a frozen snapshot (`PIDE/state_auto_update false`), flagged *Theory edited since pinned* when the version changes. | built |
+| 16 | Copy-to-editor button on messages | `feat/goals` (`insertProof.ts`) · same entry | An **Insert** button on sendback messages (e.g. `try0`'s `by simp`) inserts at the end of the command, replacing a following `sorry`; goes through the bridge-safe edit path so versions stay consistent; the suggestion's Unicode is encoded back to ASCII. | built |
 | 17 | Inline try0 / sledgehammer with results on hover or in a panel, and click-to-insert | `feat/sledgehammer` · "Alex's item 17" | **Isabelle: Sledgehammer / try0 / Cancel Sledgehammer** at the caret's command through the stock `PIDE/sledgehammer_*` query; an **Isabelle Sledgehammer** view (provers prefilled, Run/try0/Cancel, one card per proof with **Insert**, message log); a CodeLens on the command line (`running…`, then `Try this: by simp`) and a hover with the same Insert links; insert replaces a `sorry`/`oops` after the command or starts an indented line; results shift with edits and clear when the line changes; cancellation works (`Interrupt`). 17 live checks. | built |
 | 18 | Margin tick on fully proved theorems (Lean's blue ✓✓) plus a marker for unfinished ones | `feat/decorations` | Per goal command, a gutter mark from current-version facts (error > `sorry`/`oops` > busy > proved; an unconfirmed version is always "checking"), debounced 150 ms, with overview colours (`isabelleRevamp.decorations.theoremMarks`); the completed theorem `proved`, the placeholder `unfinished`, `by (rule TrueI)` `error`. | built |
 
-Dependencies Alex noted hold: 6 landed first (M9 A), and 7, 8 and 11 build on it. The merge order into `integrate/all` is quickwins → symbols → goals → decorations → sledgehammer (all five touch `extension.ts` and `package.json`; goals and sledgehammer both touch the views). After the merge: one adversarial review pass by a human who did not build them (the §8 rule for agent-written code), the five `check_<feature>.sh` plus `check_m3.sh` on the merged tree, then PR #6. Screenshots for Alex's sign-off come from the F5 host on Leo's Mac, since the rig has no screen.
+Dependencies Alex noted hold: 6 landed first (M9 A), and 7, 8 and 11 build on it. The merge into `integrate/all` was done in the order quickwins → symbols → decorations → sledgehammer → goals (`--no-ff`; all five touched `extension.ts` and `package.json`, goals and sledgehammer the views; `package.json` now has one `contributes` block with 3 views, 16 commands and 8 settings). Still to do: one adversarial review pass by a human who did not build them (the §8 rule for agent-written code), the six `check_<feature>.sh` plus `check_m3.sh` re-run after any fix, then PR #6. Screenshots for Alex's sign-off come from the F5 host on Leo's Mac, since the rig has no screen.
 
 ---
 
@@ -978,13 +978,13 @@ Dependencies Alex noted hold: 6 landed first (M9 A), and 7, 8 and 11 build on it
 
 | Decision | Alternative | Why this one | Revisit when |
 |---|---|---|---|
-| Pin **Isabelle2025-2** with the matching AFP | 2026-RC4 | Every dependency is tested on 2025-2: the AFP release, PIDE MCP's branch, Isabelle-MCP (2025-2 only), both prototypes, and Leo's extension (M1–M9 and the 18 items were accepted against it). | After 24 Oct: port Beam's 4 ML API changes and `DAG_Export`'s 2; re-check every `PIDE/*` shape in `PROTOCOL_NOTES.md` against the 2026 server; reseed caches. |
+| Pin **Isabelle2025-2** with the matching AFP | 2026-RC4 | Every dependency is tested on 2025-2: the AFP release, PIDE MCP's branch, Isabelle-MCP (2025-2 only), both prototypes, and Leo's extension (M1–M9 and the 18 items were accepted against it). | After 24 Oct: port Beam's 4 ML API changes (`Toplevel.command_exception`; `Interactive.setmp_parallel_proofs`; the `parse_text` init record; `print_function`'s `command_kind`) and `DAG_Export`'s 2 (`Name_Space.entry_pos`, `Message_Digest.rep (SHA1.digest …)`); move PIDE MCP to its 2026 branch; re-check every `PIDE/*` shape in `PROTOCOL_NOTES.md` against the 2026 server; reseed caches. |
 | **Our own extension on the unmodified `vscode_server`** | A companion to yfprojects (v1–v1.2) | It exists and works; no Marketplace pin, no `setup.sh` install of a third-party extension, no single-maintainer dependency, one codebase for UX, hover cards and the viewer; ideas are ported with credit instead. | Offer pieces upstream (outline, Sledgehammer view, symbol input) to Isabelle/VSCode after the hackathon. |
 | **Two agent designs, A and B** | One of them | A (the bridge) gives the live beat and pairing with no second prover; B gives parallel, unattended, CI-friendly work. Neither covers the other's case. | When upstream offers a shared headless session; then B can show the human's buffer too. |
 | **Display-only Unicode, ASCII on disk** (item 6) | Unicode in `.thy` files | Diffs stay readable to Isabelle and git; the lint stays simple; agents write escapes; Isabelle-MCP's guard agrees. | Never, for `thys/`; a textconv (item 18) is the local-diff sugar. |
-| Client-side hover from a lexical index (item 9) on top of the server hover (item 3) | Server patch with Markdown `Hover.reply` | No Isabelle patch; the server's own hover is already shown, so the card adds docs, breadcrumb and link. | A Scala index from PIDE markup and a patch series against Isabelle2026. |
+| Client-side hover from a lexical index (item 9) on top of the server hover (item 3) | Server patch with Markdown `Hover.reply` | No Isabelle patch; the server's own hover is already shown, so the card adds docs, breadcrumb and link. | A Scala index from PIDE markup (`Build.read_theory`) and a patch series against Isabelle2026. |
 | ProofMap edges = the kernel's *actual* dependencies | Hand-written `\uses` | Verified, not self-reported; `declared` edges kept for planning. | Larger sessions: memoise or move to CI. |
-| Batch export (`isabelle build -e`) | Live `isabelle server` | Deterministic and identical to CI. | If ≤ 30 s refreshes feel slow. |
+| Batch export (`isabelle build -e`) | Live `isabelle server` (`use_theories`, `export_pattern`) | Deterministic and identical to CI. | If ≤ 30 s refreshes feel slow. |
 | **`claims.json` as an advisory sidecar**, not part of C1 | Claims inside `dag.json` | The export is kernel truth and should not carry GitHub state; the lock is still the draft PR; the viewer merges the two. | If claims need history, move them to the `revamp` server's own store. |
 | **`vscode` job = compile + unit tests; acceptance in `heavy.yml`** | Acceptance in the required gate | Each acceptance run needs a display, a VS Code download and a full Isabelle (3 GB, 2–5 min); the gate must stay ≤ 8 min. | When the rig in CI is reliable, make `check_m3.sh` required on `extension/` PRs. |
 | 0 required approvals plus a written norm | 1 required approval | Sleep windows would deadlock merges. | After the hackathon, require 1. |
@@ -998,7 +998,7 @@ Dependencies Alex noted hold: 6 landed first (M9 A), and 7, 8 and 11 build on it
 
 | Risk | Likelihood / impact | Mitigation → fallback |
 |---|---|---|
-| **Five feature branches conflict in `extension.ts`, `package.json`, `goalsView.ts`** during integration | H / M | Fixed merge order (§13.1); the integrator resolves, Leo reviews; the five checks plus `check_m3.sh` on the merged tree before PR #6; if a branch cannot be merged in 30 min it is parked behind a setting and re-done as a small PR. |
+| **The five-branch merge hides a regression** (the conflicts in `extension.ts`, `package.json` and `goalsView.ts` were resolved by hand at T+4:35; the first run after it failed `check_goals.sh` and `check_goals2.sh` until the margin flap and an insert-button race were fixed) | M / M | The six checks plus `check_m3.sh` and the M-suites passed on the merged tree; Leo reviews the resolutions and re-runs them on his Mac; the adversarial review pass before #6; a feature that regresses is parked behind its setting. |
 | **No CI has ever reported, and the repo has no gate yet** | certain / H | Issues and skeleton in the next hour; CI PR by Train 8; until then the captain runs `check_m3.sh` on `main` at every train. |
 | The MCP bridge is per window: the most recent window owns the discovery file; a window reload interrupts the bridge (recorded in M7) | M / H (demo) | One window during the demo; never reload; `ISABELLE_REVAMP_PORT_FILE` for an isolated instance; restart MCP connections after a reload; the fallback video. |
 | Ask Isabelle depends on the signed-in Claude Code CLI on VS Code's PATH and on quota | M / H | Checked by `doctor.sh` and the dry run; quota kept back from the overnight waves; the Swarm board with two scripted clients is the no-model fallback (`check_m7.sh` runs it). |
@@ -1030,7 +1030,7 @@ Dependencies Alex noted hold: 6 landed first (M9 A), and 7, 8 and 11 build on it
 
 ## 16. Glossary
 
-- **Isabelle/HOL:** the proof assistant and its main logic. **Poly/ML:** the SML runtime that runs the prover. **Isabelle/Scala:** the JVM layer (PIDE, builds, the server). **PIDE:** the asynchronous document model; `PIDE/*` are the server's custom LSP messages.
+- **Isabelle/HOL:** the proof assistant and its main logic, Higher-Order Logic. **Poly/ML:** the SML runtime that runs the prover. **Isabelle/Scala:** the JVM layer (PIDE, builds, the server). **PIDE:** the asynchronous document model; `PIDE/*` are the server's custom LSP messages.
 - **Session, heap, theory, Isar, proof method, `sorry`/`\<proof>`/`oops`, `quick_and_dirty`, `record_proofs`, oracle, `axioms.allow`, `Thm_Deps`, AFP, cartouche, marker, locale, Sledgehammer, overlay:** as in v1.2; unchanged.
 - **`vscode_server`:** Isabelle's own language server, which our extension drives **unmodified**; we request HTML output and convert it, because its plaintext serialiser is broken (M1).
 - **The extension (`extension/`):** our VS Code extension (Leo, M1–M9 plus Alex's 18 items): highlighting, display-only symbols with input, the Goals sidebar and panel, outline, decorations, gutter ticks, Sledgehammer/try0, Swarm, Ask Isabelle, the MCP bridge, hover cards and the ProofMap viewer.

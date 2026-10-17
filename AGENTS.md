@@ -8,7 +8,7 @@
 
 1. `PLAN.md` (v2) — the authoritative system design, contracts, git workflow, CI, timeline (times are T+h:mm from kickoff at 09:39 BST Sat 17 Oct 2026; §12 maps them to wall clock), the plan items (§13) and Alex's 18 extension items (§13.1).
 2. `README.md` — status table and ground rules.
-3. `docs/plans/*.md` — proposed or approved plans for individual workstreams (`vscode-companion.md` for plan items #9/#10, `isabelle-mcp.md` for the agent prover interface).
+3. `docs/plans/*.md` — proposed or approved plans for individual workstreams (`vscode-companion.md` for plan items 9 and 10, `isabelle-mcp.md` for the agent prover interface).
 4. `docs/decisions/ADR-*.md` — decisions once recorded.
 
 ## Hard rules (from PLAN.md §2, §8, §11; the CI lint enforces most of them)
@@ -16,10 +16,10 @@
 - **Never** change Isabelle's kernel, HOL, Isar syntax or outer keywords; no `keywords` in theory headers; no `axiomatization` or `oracle` under `thys/` or `heavy/`; never patch Isabelle.
 - `.thy` files are **ASCII only** (`\<forall>`, `\<open>…\<close>`); never write Unicode into one.
 - Every change goes through a pull request. Never push to `main`, never merge, never call `gh api`. Rebase (`git fetch && git rebase origin/main`); never merge `main` into a branch; no stacked PRs.
-- One concern per PR, about ≤ 300 changed lines (lockfiles and golden files excluded). Title `area: imperative` with area ∈ {ci, thys, heavy, proofmap, beam, tools, vscode, contracts, docs}. Open a draft PR within 30 minutes of starting.
+- One concern per PR, about ≤ 300 changed lines (lockfiles and golden files excluded). Title `area: imperative` with area ∈ {ci, thys, heavy, proofmap, beam, tools, extension, mcp, contracts, docs} (`vscode` is retired). Open a draft PR within 30 minutes of starting.
 - **Mode by kind of work (PLAN §11):** scaffolds, prototype ports, CI YAML, schemas, tests → *plan first*: post the plan on the issue, a human approves (≤ 5 min), then implement a small PR. Theorem statements, `blueprint.yaml`, `statements.lock`, `axioms.allow`, contracts, `.github/`, `.claude/`, version pins → *humans lead*; agents are typists only. Merge order, demo script and slide claims → humans only.
 - Agents never add `sorry`, `\<proof>`, `oops`, ML commands, `setup`/`declaration`, `tactic`/`raw_tactic`, `axiomatization` or `oracle`, and never close a hole by citing another `sorry`'d lemma.
-- Contracts (`contracts/`) are frozen after Train 3/4; a change needs the `contract-change` label, a `schema_version` bump and every consumer's approval.
+- Contracts (`contracts/`) are frozen at Train 7 (C1–C3) and Train 8 (C4), PLAN.md §6; a change needs the `contract-change` label, a `schema_version` bump and every consumer's approval.
 
 ## Where things go (directory → owner; PLAN.md §7 has the full tree)
 
@@ -36,12 +36,12 @@
 | `agents/`, `scripts/{setup,doctor,demo-smoke}.sh` | retinapeg | agent runner, setup scripts |
 | `docs/` | shared | ADRs, `design/ui.md` (Alex), demo script, pain points, research, plans |
 
-Generated files (`out/`, `*.vsix`, heaps, `*.db`, `.mcp.json`, `.vscode/settings.json`, `.isahome/`) are never committed.
+Generated files (`out/`, `*.vsix`, heaps, `*.db`, `.mcp.json`, `.isahome/`) are never committed. `.vscode/settings.json` is committed today with a `~/hack/isabelle-env/…` executable path; whether it becomes `settings.json.example` is decided at Train 7 (PLAN.md §7).
 
 ## Conventions and known wrinkles
 
 - Pins: **Isabelle2025-2** (`.isabelle-version`), AFP `afp-2026-10-16`, PIDE MCP `7463338`, Node 22 (CI), TypeScript as `extension/package.json` pins it (7, strict); everything else in `deps.lock`. No third-party editor extension is pinned or installed: `extension/` is the editor.
 - **Issue numbering:** PRs occupy #1–#6, so plan items are created as issues titled `P<N>: <title>` and referred to as "plan item N"; quote the real issue in "Closes #M (plan item N)". Never assume issue #N = item N.
 - Branches: `alex/<issue#>-<slug>`, `ark/<issue#>-<slug>`, `retinapeg/<issue#>-<slug>`, `leo/<item>-<slug>`; `feat/<name>` for the agent-built feature branches that merge into `integrate/all` (PR #6); `agent/<node-slug>` for Claude's headless proof PRs (labelled `agent-generated`); `demo/<slug>` for planted demo PRs (draft, `do-not-merge`); `proto/*` are the four prototype branches (`proto/ci`, `proto/proofmap`, `proto/beam`, `proto/docs`).
-- Node IDs are `Session.Theory.fact`; paths in contracts are repo-relative; lines are 1-based.
+- Node IDs are `Session.Theory.fact`; paths in contracts are repo-relative; lines are 1-based everywhere except the bridge (next line).
 - The hover card never waits on the prover; the bridge's `status()`, Beam and Isabelle-MCP verdicts are advisory; only the kernel batch build plus `revamp map audit` accepts a proof into `main`. Two agent designs coexist (PLAN §11A): A = the MCP bridge in the human's editor (zero-based coordinates), B = headless workers in worktrees (1-based).
