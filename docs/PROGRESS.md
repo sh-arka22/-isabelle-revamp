@@ -401,3 +401,52 @@
 - **Would do differently:** enable formula completions at language registration
   time and separate source representation from display from the first editor
   milestone.
+
+## 2026-10-17 — Quick wins 1–5 from Alex's hands-on feedback
+
+- **Changed:** library files under `ISABELLE_HOME`/`ISABELLE_HOME_USER` become
+  read-only for the session when they become the active editor (built-in
+  `setActiveEditorReadonlyInSession`, once per document, setting
+  `isabelleRevamp.lockLibrary`); both roots come from one `isabelle getenv -b`
+  call shared with the symbol table. The TextMate grammar was reworked: inner
+  syntax is `meta.inner-syntax` with nested name/operator/numeral/type-variable
+  scopes, goal and definition commands are `storage.type` with the declared
+  name as `entity.name.function`, proof commands `keyword.control.proof`,
+  methods `support.function.method` in method position only, `sorry`/`oops`
+  `keyword.other.unfinished`, and document cartouches
+  `comment.block.documentation`. Hover replies pass through a middleware that
+  decodes `\<symbol>` escapes and renders each tooltip as an `isabelle` code
+  block. The goals model now drives several webviews: the Explorer view and a
+  new **Isabelle Goals** panel beside the editor (`ViewColumn.Beside`,
+  `preserveFocus`, `retainContextWhenHidden`), opened once per window when the
+  first theory becomes active (`isabelleRevamp.goalsPanel`: beside | sidebar |
+  off) or by **Isabelle: Open Goals Beside Editor**. **Isabelle: Restart
+  Language Server** rebuilds the client (`startClient()`), rebinds Goals to it
+  (`Goals.rebind`), and is reachable from a status bar item
+  (`Isabelle: ready | checking… | stopped`) and a **↻ Restart** link in the
+  goals header.
+- **Passed:** `bash scripts/check_quickwins.sh` in headless stock VS Code with
+  the real server: grammar scopes across four built-in themes, pure unit
+  checks (`extension/test/unit_quickwins.cjs`), the panel opening beside the
+  fixture without stealing focus and sharing the model with the sidebar, live
+  hover on `sqrt` (`constant "NthRoot.sqrt"`, `:: real ⇒ real`), on `value`
+  (`"4" :: "nat"`) and on `\<rat>`, locking of `HOL/Examples/Seq.thy` and of
+  a workspace symlink into the library while the fixture stays writable, and
+  a restart that recovers the same `sqrt 2 ∉ ℚ` goal at the same cursor.
+  `check_m3.sh` and `check_m6.sh` still pass; `highlighting.cjs` expectations
+  were updated to the new scopes on purpose, and `askView.cjs` learnt the new
+  restart button.
+- **Discovered:** `textDocument/hover` returns MarkedString objects
+  `{language: "plaintext", value}` (one or a list), with escapes left as
+  `\<Rightarrow>`; the language client wraps each in a fenced block before
+  middleware sees it, so the middleware unwraps, decodes and re-fences. The
+  server advertises no `documentSymbolProvider` (item 10 needs a client-side
+  outline). `dotted_writeln` decoration ranges mark commands with output
+  (`sorry`, `qed`, `value`), the hook for item 9. A nested lookbehind inside a
+  TextMate lookbehind compiles in Oniguruma but matches empty text, silently
+  breaking the whole grammar; `\b` inside a lookbehind works. Details are in
+  [PROTOCOL_NOTES.md](PROTOCOL_NOTES.md).
+- **Next:** items 6–18 (Unicode input, superscripts, coloured goals, output
+  underlines, outline, cartouches, the InfoView-style sidebar sections,
+  Sledgehammer and per-theorem gutter ticks).
+
