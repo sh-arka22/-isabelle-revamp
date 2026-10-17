@@ -33,6 +33,9 @@ export async function loadSymbols(executable: string): Promise<{ path: string; c
   return { path, count: Object.keys(loaded).length };
 }
 
+/** The table in use: the installed etc/symbols once loaded, else the bundled copy. */
+export function symbolTable(): Readonly<Record<string, string>> { return symbols; }
+
 export function unicodeSymbols(text: string): string {
   return text.replace(/\\<(\^?[A-Za-z][A-Za-z0-9_]*)>/g,
     (encoded, name: string) => Object.hasOwn(symbols, name) ? symbols[name] : encoded)

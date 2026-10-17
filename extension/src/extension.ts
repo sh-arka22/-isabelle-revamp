@@ -10,6 +10,7 @@ import { loadSymbols, unicodeSymbols } from './symbols';
 import { PrettySymbols } from './prettySymbols';
 import { Swarm } from './swarm';
 import { Ask } from './ask';
+import { ProofMapPanel, registerProofMap } from './map/proofMapPanel';
 
 // Minimal startup adapted from Isabelle2025-2:
 // src/Tools/VSCode/extension/src/extension.ts:97–128.
@@ -21,6 +22,8 @@ let ask: Ask | undefined;
 
 export async function activate(context: ExtensionContext) {
   const output = window.createOutputChannel('Isabelle', { log: true });
+  // ProofMap reads only out/dag.json, so it is registered before the prover starts.
+  const proofMap = registerProofMap(context);
   const view = new GoalsView();
   let theoryEditor = window.activeTextEditor;
   const visibleTheory = () => theoryEditor && window.visibleTextEditors.includes(theoryEditor) ? theoryEditor : undefined;
@@ -131,7 +134,12 @@ export async function activate(context: ExtensionContext) {
   return { getGoalState: () => view.snapshot(), getSwarmState: () => swarm.view.snapshot(),
     getPrettySymbols: () => window.activeTextEditor ? prettySymbols.snapshot(window.activeTextEditor) : [],
     getAskState: () => ask!.snapshot(), sendAsk, stopAsk: () => ask?.stop(),
-    selectSwarmStep: (uri: string, version: number, id: string) => swarm.select(uri, version, id) };
+    selectSwarmStep: (uri: string, version: number, id: string) => swarm.select(uri, version, id),
+    // ProofMap: the acceptance test reads the same model the webview renders and
+    // can inject a webview message (e.g. an 'open' request) through the host handler.
+    showProofMap: () => proofMap.show(),
+    getProofMapState: () => ProofMapPanel.instance?.state(),
+    proofMapMessage: (message: unknown) => ProofMapPanel.instance?.handleMessage(message) };
 }
 
 export async function deactivate(): Promise<void> {

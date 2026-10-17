@@ -401,3 +401,74 @@
 - **Would do differently:** enable formula completions at language registration
   time and separate source representation from display from the first editor
   milestone.
+
+## ProofMap viewer (plan item 10) — implemented inside `extension/`, checks passed
+
+- **Changed:** the live theorem dependency map from PLAN §13 item 10 and
+  `docs/plans/vscode-companion.md` §3, ported into Leo's extension instead of a
+  separate `vscode/` folder. Commands **Isabelle Revamp: Show ProofMap**, **Show
+  ProofMap in New Window** (`workbench.action.moveEditorToNewWindow`), **ProofMap —
+  Fit Graph / Reload dag.json / Open Replay Snapshot…** (the last accepts a path
+  argument for tests); settings `isabelleRevamp.proofMap.{dagPath,claimsPath,
+  followAgent,autoOpen}`. Host code in `src/map/` (`proofMapPanel.ts`: singleton
+  panel with `retainContextWhenHidden`, nonce CSP without `unsafe-inline`,
+  "ProofMap" Output channel, file:line opening; `dagWatcher.ts`: file watcher +
+  150 ms debounce + retries on partial writes + a 1 s mtime poll; `htmlTemplate.ts`:
+  static document). Pure core in `src/map/core/` shared with the webview bundle:
+  C1 types and a tolerant parser, deterministic export diff → map events with
+  regression flags (`fully_proved → proved`, changed `statement_sha1`, new oracle),
+  the local `next_holes` ranking, symbol display (unknown names become `⟨name⟩`, no
+  raw `\<…>` reaches a surface) and the host↔webview protocol with validation on
+  both sides. Webview `webview/map/{main.ts,map.css}` bundled by esbuild
+  (`npm run bundle`, `npm run compile` = tsc + bundle, `npm run typecheck` covers
+  both tsconfigs) with Cytoscape 3.34 + cytoscape-dagre 4.0 inlined (no CDN):
+  dagre BT with the tight-tree ranker on sorted input, leanblueprint legend, theme
+  colours read from `--vscode-*` at run time and re-applied on theme change,
+  incremental node/edge updates with flashes, hover tooltip, side panel, double-click
+  to open, filter box (`status:`, `theory:`, `label:`, free text), Follow agent,
+  session-progress card, events feed and a status bar with the 500-node budget.
+  Fixtures: `extension/test/fixtures/proofmap/dag.apery-mid-session.json` (12 Apéry
+  nodes B1–B12, statuses 5 fully proved · 2 proved · 3 sorry · 1 defined · 1 missing)
+  and `claims.json`; `contracts/claims.schema.json`, `contracts/README.md` and
+  `contracts/examples/claims.json` describe the advisory sidecar. Panel tab icons in
+  `extension/media/`. Dependencies: `cytoscape`, `cytoscape-dagre` (runtime),
+  `esbuild`, `@types/cytoscape` (dev); lockfile committed; notices added.
+- **Passed:** `node extension/test/unit_proofmap.cjs` (11 checks: parser tolerance,
+  ranking on the fixture — `linear_form_small` #1 with leverage 3, `double_sum_swap`
+  #2, `apery_series_limit` #3 resting on two holes — ordered deterministic diffs,
+  regressions, claims, symbols, protocol round-trips, CSP/document shape).
+  `scripts/check_proofmap.sh` with the headless stock VS Code: the five commands
+  registered; the replay snapshot loaded 12 nodes with the expected counts, ranking
+  and the sidecar claim; the webview laid the graph out inside the real webview
+  (45–79 ms, which proves the bundle runs under the nonce CSP); a rewrite of the live
+  `dag.json` through a truncated intermediate file produced `status_changed` and a
+  flagged regression; a `claims.json` that appears later was picked up; a synthetic
+  `open` request opened `thys/Apery/Bounds.thy` at line 40; malformed and
+  missing-node requests were ignored safely; `showProofMapInNewWindow`, fit, reload
+  worked headless; a deleted export is reported as an explained empty state.
+  `scripts/check_m3.sh` regression: see the line below.
+- **Performance** (`node extension/test/perf_proofmap.cjs`, Playwright Chromium
+  1194 in this container, same CSP as the webview, no violations, no console
+  errors): Apéry fixture 94–109 ms; synthetic **500 nodes / 740 edges**,
+  blueprint-like shape (14 ranks): **564–623 ms to first paint** (dagre ≈ 430 ms,
+  paint ≈ 150–250 ms; re-layout 465 ms) — within the 2 s target. The adversarial
+  `--deep` chain (85 ranks, ≈ 4,900 dagre dummy nodes) takes 1.9–2.2 s, above the
+  budget; real theorem maps are shallow (Apéry: 6 ranks), and the status bar warns
+  above 500 nodes. Light and dark screenshots: `.dev-host/proofmap-{dark,light}.png`.
+- **Discovered:** Cytoscape prepends an inline `<style>` unless an element with id
+  `__________cytoscape_stylesheet` exists; an inert `<meta>` with that id keeps the
+  CSP free of `unsafe-inline`. VS Code delivered no create event for a file written
+  into a directory the test had just created, and a poll that only records its first
+  stamp misses a file created before its first tick: the poll now compares against
+  the stamp seen by the last load. `cytoscape-dagre` 4 bundles `@dagrejs/dagre` and
+  ships its own types, so `@types/cytoscape-dagre` is not needed. The claims sidecar
+  is read before the export, so the feed's first line may be the claim, not "loaded".
+- **Known gaps:** no Isabelle-driven end-to-end run (`revamp map export --watch`
+  does not exist in this branch; the viewer was exercised with hand-derived
+  fixtures); the save-to-green time on Apéry is unmeasured; `npm run package`
+  (vsce, verified once here: 2.6 MB vsix, `repository` added to `package.json` so
+  the README's relative links resolve) still ships `node_modules` because the host
+  code is compiled by `tsc`, not bundled; Alex's light/dark sign-off is pending.
+- **Next:** point `isabelleRevamp.proofMap.dagPath` at the real export once #6
+  lands, measure save-to-green, and replace the fixture's hand-written statements
+  with a CI `proofmap` artifact snapshot for the demo replay.

@@ -8,6 +8,8 @@ fully checked proof that sqrt 2 is irrational in `examples/Sqrt2.thy`, with no
 M6 adds a theme-aware sidebar, Unicode output and a theory/check-status header.
 M7 adds **Isabelle Swarm**, a live card board for six proof steps filled through MCP.
 M8 adds **Ask Isabelle**: streamed Claude Code replies and proof edits through those same tools.
+The **ProofMap viewer** (plan item 10) shows the kernel-checked theorem dependency map
+from `out/dag.json`, live, with the leanblueprint legend.
 
 ## Try the extension in under five minutes
 
@@ -113,6 +115,53 @@ streaming, Stop, missing-tool help, webview behavior and earlier regressions.
 `M8_LIVE=1 bash scripts/check_m8.sh` also runs the two real Claude acceptance
 requests with your configured account/model, temporarily editing and restoring
 `Demo.thy`. Ask uses only the installed Claude Code CLI and the seven MCP tools.
+
+## ProofMap viewer
+
+**Isabelle Revamp: Show ProofMap** opens the kernel-checked theorem dependency map
+(PLAN.md §6.2, contract C1) as a panel beside the editor. It reads `out/dag.json`,
+written by `revamp map export --watch` after each save, and the optional
+`out/claims.json` sidecar (`contracts/claims.schema.json`); it never calls the prover.
+Dependencies sit above dependents (the main theorem at the bottom, like a
+leanblueprint graph); the legend follows PLAN §6.2: missing = dashed blue border,
+defined = box, sorry = red border, proved = green fill, fully proved = dark-green
+fill, oracle = solid red. Edges: `uses` solid, `uses_def` dotted, `declared` dashed.
+Colours come from your VS Code theme and re-skin when it changes.
+
+- Hover a node for its statement (symbols shown as mathematics, files untouched) and
+  description; click for the side panel (status, dependencies, used-by, file:line,
+  blueprint label, paper reference); double-click, or click the location, to open the
+  theory at that line. Missing nodes explain that they exist only in `blueprint.yaml`.
+- The filter box takes `status:sorry`, `theory:Apery.Bounds`, `label:B3` or free text;
+  Escape clears it. Open holes carry a `next hole · #k` badge in the `next_holes` order
+  (holes resting on no other hole first, then leverage, then the shortest statement).
+- **Follow agent** keeps the node an agent has claimed (pulsing badge, from
+  `claims.json`) centred. **Map events** lists what changed between two exports:
+  new, removed and re-coloured nodes, with regressions (`fully_proved → proved`,
+  a changed `statement_sha1`, a new oracle) in the warning colour; changed nodes flash.
+- The session card counts nodes per status; the status bar shows nodes, edges, the
+  last layout time, the 500-node budget (≤ 2 s to first paint) and the file being
+  followed. Parser warnings and every event also go to **Output → ProofMap**.
+
+Commands: **Show ProofMap**, **Show ProofMap in New Window** (pops the panel out
+beside VS Code through `workbench.action.moveEditorToNewWindow`), **ProofMap — Fit
+Graph**, **ProofMap — Reload dag.json** and **ProofMap — Open Replay Snapshot…**.
+Settings: `isabelleRevamp.proofMap.dagPath` (`out/dag.json`, relative to the first
+workspace folder), `isabelleRevamp.proofMap.claimsPath` (`out/claims.json`),
+`isabelleRevamp.proofMap.followAgent` (true) and `isabelleRevamp.proofMap.autoOpen`
+(false).
+
+For a demo without Isabelle, run **Open Replay Snapshot…** and pick
+`extension/test/fixtures/proofmap/dag.apery-mid-session.json` (12 Apéry nodes
+B1–B12 part-way through a session, with `claims.json` next to it); rewriting that
+file replays the next step. `bash scripts/check_proofmap.sh` runs the pure unit
+tests (`extension/test/unit_proofmap.cjs`) and then the viewer inside stock VS Code:
+snapshot, live rewrite through the watcher, open file:line and the pop-out command.
+`node extension/test/perf_proofmap.cjs` lays out a synthetic 500-node / 740-edge graph
+in Playwright's Chromium under the webview's CSP and writes light and dark
+screenshots to `.dev-host/`. The webview bundle (`npm run bundle`, Cytoscape +
+dagre inlined, no CDN) is built by `npm run compile`; `npm run typecheck` covers
+the host and the webview.
 
 ## Run the goal probe
 

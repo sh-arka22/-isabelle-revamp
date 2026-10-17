@@ -3,3 +3,6 @@ extension/out/
 .dev-host/
 __pycache__/
 mcp/.venv/
+/out/
+extension/dist/
+*.vsix

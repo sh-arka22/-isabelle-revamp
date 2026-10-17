@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/sh-arka22/-isabelle-revamp/contracts/claims.schema.json",
+  "title": "ProofMap claims sidecar",
+  "description": "Advisory sidecar next to the C1 export (out/claims.json): the holes agents currently hold. Not part of contract C1; the ProofMap viewer works without the file. Written by the revamp MCP `claim` tool, read by the extension's ProofMap panel.",
+  "type": "object",
+  "required": ["claims"],
+  "additionalProperties": false,
+  "properties": {
+    "claims": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "C1 node id, Session.Theory.fact (PLAN.md §6.2).",
+            "pattern": "^[^.\\s]+\\.[^.\\s]+\\..+$"
+          },
+          "pr": { "type": "integer", "minimum": 1, "description": "Draft pull request number that holds the lock." },
+          "branch": { "type": "string", "description": "agent/<slug> branch of the claim." },
+          "since": { "type": "string", "format": "date-time", "description": "When the claim was taken (ISO-8601, UTC)." }
+        }
+      }
+    }
+  }
+}

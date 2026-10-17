@@ -1,0 +1,143 @@
+/* ProofMap webview. Colours come from VS Code's theme variables; the few
+   computed ones (dark green, the resolved chart colours) are set on #app by
+   main.ts as --pm-* custom properties, so the legend matches the canvas. */
+html, body, #app { height: 100%; margin: 0; }
+body {
+  color: var(--vscode-foreground);
+  background: var(--vscode-editor-background);
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  overflow: hidden;
+}
+#app {
+  --pm-green: var(--vscode-charts-green, var(--vscode-testing-iconPassed));
+  --pm-dark-green: #2e7d32;
+  --pm-red: var(--vscode-charts-red, var(--vscode-errorForeground));
+  --pm-blue: var(--vscode-charts-blue, var(--vscode-textLink-foreground));
+  --pm-yellow: var(--vscode-charts-yellow, var(--vscode-editorWarning-foreground));
+  --pm-purple: var(--vscode-charts-purple, var(--vscode-textLink-activeForeground));
+  --pm-node-fill: var(--vscode-editorWidget-background);
+  --pm-node-border: var(--vscode-widget-border, var(--vscode-panel-border));
+  --pm-edge: var(--vscode-charts-lines, var(--vscode-descriptionForeground));
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+
+/* toolbar */
+#toolbar {
+  display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+  padding: 6px 8px; border-bottom: 1px solid var(--vscode-panel-border);
+}
+button {
+  font: inherit; cursor: pointer; padding: 3px 10px; border: 1px solid transparent;
+  color: var(--vscode-button-secondaryForeground, var(--vscode-button-foreground));
+  background: var(--vscode-button-secondaryBackground, var(--vscode-button-background));
+}
+button:hover { background: var(--vscode-button-secondaryHoverBackground, var(--vscode-button-hoverBackground)); }
+button:focus-visible, input:focus-visible { outline: 1px solid var(--vscode-focusBorder); outline-offset: 1px; }
+button.link {
+  padding: 0; border: 0; background: none; color: var(--vscode-textLink-foreground); text-align: left;
+  overflow-wrap: anywhere;
+}
+button.link:hover { text-decoration: underline; color: var(--vscode-textLink-activeForeground); }
+#filter {
+  flex: 1 1 180px; min-width: 120px; font: inherit; padding: 3px 6px;
+  color: var(--vscode-input-foreground); background: var(--vscode-input-background);
+  border: 1px solid var(--vscode-input-border, var(--vscode-panel-border));
+}
+#filter::placeholder { color: var(--vscode-input-placeholderForeground); }
+#filter-count { color: var(--vscode-descriptionForeground); min-width: 4em; }
+.toggle { display: inline-flex; gap: 4px; align-items: center; cursor: pointer; }
+
+/* graph + side panel */
+#workspace { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 320px); min-height: 0; position: relative; }
+#graph { position: relative; min-height: 0; min-width: 0; }
+#tooltip {
+  position: absolute; z-index: 5; max-width: 440px; padding: 8px 10px; pointer-events: none;
+  color: var(--vscode-editorHoverWidget-foreground, var(--vscode-foreground));
+  background: var(--vscode-editorHoverWidget-background, var(--vscode-editorWidget-background));
+  border: 1px solid var(--vscode-editorHoverWidget-border, var(--vscode-widget-border));
+  box-shadow: 0 2px 8px var(--vscode-widget-shadow, rgba(0, 0, 0, .3));
+}
+#tooltip p { margin: 6px 0 0; }
+#empty {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  padding: 24px; text-align: center; color: var(--vscode-descriptionForeground);
+}
+#empty[hidden] { display: none; }
+#empty-text { max-width: 520px; }
+#side {
+  display: flex; flex-direction: column; min-height: 0; overflow: auto;
+  border-left: 1px solid var(--vscode-panel-border);
+  background: var(--vscode-sideBar-background);
+}
+#side section { padding: 8px 10px; border-bottom: 1px solid var(--vscode-panel-border); }
+#side h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; margin: 0 0 6px; color: var(--vscode-sideBarSectionHeader-foreground, var(--vscode-foreground)); }
+#side h3 { font-size: 1.05em; margin: 0 0 2px; overflow-wrap: anywhere; }
+#side h4 { font-size: .9em; margin: 10px 0 3px; color: var(--vscode-descriptionForeground); }
+#side p { margin: 4px 0; overflow-wrap: anywhere; }
+#side ul { margin: 0; padding-left: 16px; }
+#events-section { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 120px; }
+#events { flex: 1 1 auto; overflow: auto; list-style: none; margin: 0; padding: 0; font-size: .92em; }
+.event { padding: 2px 0; overflow-wrap: anywhere; }
+.event time { color: var(--vscode-descriptionForeground); font-variant-numeric: tabular-nums; }
+.event.success { color: var(--pm-green); }
+.event.warning, .event.regression { color: var(--vscode-editorWarning-foreground, var(--pm-yellow)); }
+.event.clickable { cursor: pointer; }
+.event.clickable:hover { text-decoration: underline; }
+.muted { color: var(--vscode-descriptionForeground); }
+.mono, pre.source { font-family: var(--vscode-editor-font-family), monospace; font-size: var(--vscode-editor-font-size); }
+pre.source { white-space: pre-wrap; overflow-wrap: anywhere; margin: 2px 0; line-height: 1.45; direction: ltr; unicode-bidi: isolate; }
+.note { padding: 6px 8px; border-left: 3px solid var(--pm-blue); background: color-mix(in srgb, var(--pm-blue) 12%, transparent); }
+.badge {
+  display: inline-block; margin-right: 6px; padding: 0 6px; border-radius: 8px; font-size: .8em; font-weight: 600;
+  color: var(--vscode-badge-foreground); background: var(--vscode-badge-background);
+}
+.status-pill { display: inline-block; padding: 0 7px; border-radius: 8px; border: 1px solid var(--pm-node-border); font-size: .9em; }
+.status-pill.status-missing { border-color: var(--pm-blue); border-style: dashed; }
+.status-pill.status-sorry { border-color: var(--pm-red); }
+.status-pill.status-proved { background: var(--pm-green); color: #1b1b1b; border-color: var(--pm-green); }
+.status-pill.status-fully_proved { background: var(--pm-dark-green); color: #fff; border-color: var(--pm-dark-green); }
+.status-pill.status-oracle { background: var(--pm-red); color: #fff; border-color: var(--pm-red); }
+.status-pill.status-claimed { border-color: var(--pm-purple); color: var(--pm-purple); }
+
+/* session progress card */
+#counts { display: grid; grid-template-columns: repeat(3, auto); gap: 4px 10px; margin: 0; }
+.count { display: inline-flex; align-items: center; gap: 5px; }
+.count-value { font-weight: 600; font-variant-numeric: tabular-nums; }
+.count-label { color: var(--vscode-descriptionForeground); }
+#claims div { margin-top: 4px; }
+
+/* legend + status bar */
+#statusbar {
+  display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; justify-content: space-between;
+  padding: 4px 8px; border-top: 1px solid var(--vscode-panel-border);
+  font-size: .9em; color: var(--vscode-descriptionForeground);
+}
+#legend { display: flex; flex-wrap: wrap; gap: 4px 10px; }
+.legend-item { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.swatch {
+  display: inline-block; width: 12px; height: 12px; border-radius: 50%; box-sizing: border-box;
+  background: var(--pm-node-fill); border: 2px solid var(--pm-node-border);
+}
+.swatch.status-missing { border-color: var(--pm-blue); border-style: dashed; }
+.swatch.status-defined { border-radius: 2px; }
+.swatch.status-sorry { border-color: var(--pm-red); }
+.swatch.status-proved { background: var(--pm-green); border-color: var(--pm-green); }
+.swatch.status-fully_proved { background: var(--pm-dark-green); border-color: var(--pm-dark-green); }
+.swatch.status-oracle { background: var(--pm-red); border-color: var(--pm-red); }
+.edge-swatch { display: inline-block; width: 18px; border-top: 2px solid var(--pm-edge); vertical-align: middle; }
+.edge-swatch.edge-uses_def { border-top-style: dotted; }
+.edge-swatch.edge-declared { border-top-style: dashed; border-top-color: var(--pm-blue); }
+#status { margin: 0; }
+#status.error { color: var(--vscode-errorForeground); }
+
+body.vscode-high-contrast #toolbar, body.vscode-high-contrast #side, body.vscode-high-contrast #statusbar,
+body.vscode-high-contrast-light #toolbar, body.vscode-high-contrast-light #side, body.vscode-high-contrast-light #statusbar {
+  border-color: var(--vscode-contrastBorder);
+}
+
+@media (max-width: 720px) {
+  #workspace { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) minmax(0, 40%); }
+  #side { border-left: 0; border-top: 1px solid var(--vscode-panel-border); }
+}

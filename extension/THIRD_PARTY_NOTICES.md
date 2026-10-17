@@ -57,3 +57,39 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ```
+
+# ProofMap viewer dependencies
+
+The ProofMap webview (`webview/map/`, bundled by esbuild into `dist/webview/map.js`)
+embeds the following packages. They are bundled into the extension; nothing is
+fetched from a CDN at run time.
+
+| Package | Version | Licence | Copyright |
+|---|---|---|---|
+| [cytoscape](https://js.cytoscape.org) | 3.34.4 | MIT | The Cytoscape Consortium |
+| [cytoscape-dagre](https://github.com/cytoscape/cytoscape.js-dagre) | 4.0.1 | MIT | The Cytoscape Consortium (bundles `@dagrejs/dagre` 3.x, MIT, Chris Pettitt and the dagre contributors) |
+| [esbuild](https://esbuild.github.io) (build time only) | 0.28.2 | MIT | Evan Wallace |
+
+MIT licence text (applies to all three):
+
+```text
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
+
+The symbol table shared with the webview (`src/map/core/symbols.ts`) reuses
+`src/symbolCodes.json`, covered by the Isabelle notice above.

@@ -6,12 +6,18 @@
   "publisher": "hymanimy",
   "private": true,
   "license": "UNLICENSED",
+  "repository": { "type": "git", "url": "https://github.com/sh-arka22/-isabelle-revamp.git" },
   "engines": { "vscode": "^1.104.0" },
   "categories": ["Programming Languages"],
   "main": "./out/extension.js",
   "activationEvents": ["onLanguage:isabelle", "onView:isabelleRevamp.goals", "onView:isabelleRevamp.swarm"],
   "scripts": {
-    "compile": "tsc -p .",
+    "compile": "tsc -p . && node esbuild.mjs",
+    "bundle": "node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "typecheck": "tsc -p . --noEmit && tsc -p webview --noEmit",
+    "test:unit": "node test/unit_proofmap.cjs",
+    "package": "npx --yes @vscode/vsce package --skip-license",
     "vscode:prepublish": "npm run compile"
   },
   "contributes": {
@@ -25,7 +31,12 @@
       { "command": "isabelleRevamp.togglePrettySymbols", "title": "Isabelle: Toggle Pretty Symbols" },
       { "command": "isabelleRevamp.ask", "title": "Isabelle: Ask" },
       { "command": "isabelleRevamp.showGoals", "title": "Isabelle: Show Goals" },
-      { "command": "isabelleRevamp.showSwarm", "title": "Isabelle: Show Swarm" }
+      { "command": "isabelleRevamp.showSwarm", "title": "Isabelle: Show Swarm" },
+      { "command": "isabelleRevamp.showProofMap", "title": "Isabelle Revamp: Show ProofMap" },
+      { "command": "isabelleRevamp.showProofMapInNewWindow", "title": "Isabelle Revamp: Show ProofMap in New Window" },
+      { "command": "isabelleRevamp.proofMap.fit", "title": "Isabelle Revamp: ProofMap — Fit Graph" },
+      { "command": "isabelleRevamp.proofMap.reload", "title": "Isabelle Revamp: ProofMap — Reload dag.json" },
+      { "command": "isabelleRevamp.proofMap.openSnapshot", "title": "Isabelle Revamp: ProofMap — Open Replay Snapshot…" }
     ],
     "languages": [{
       "id": "isabelle",
@@ -56,16 +67,36 @@
           "default": "isabelle",
           "scope": "machine-overridable",
           "description": "Path to the Isabelle executable (~/ is supported), or isabelle on PATH. Reload the window after changing this setting."
+        },
+        "isabelleRevamp.proofMap.dagPath": {
+          "type": "string", "default": "out/dag.json",
+          "description": "The ProofMap export (contract C1) to watch, relative to the first workspace folder or absolute. `revamp map export --watch` rewrites it after each save."
+        },
+        "isabelleRevamp.proofMap.claimsPath": {
+          "type": "string", "default": "out/claims.json",
+          "description": "Optional claims sidecar listing the hole an agent is working on. The ProofMap works without it."
+        },
+        "isabelleRevamp.proofMap.followAgent": {
+          "type": "boolean", "default": true,
+          "description": "Keep the node the agent has claimed centred in the ProofMap when the graph updates."
+        },
+        "isabelleRevamp.proofMap.autoOpen": {
+          "type": "boolean", "default": false,
+          "description": "Open the ProofMap when the extension activates and the export file exists."
         }
       }
     }
   },
   "dependencies": {
+    "cytoscape": "^3.34.4",
+    "cytoscape-dagre": "^4.0.1",
     "vscode-languageclient": "10.1.2"
   },
   "devDependencies": {
+    "@types/cytoscape": "^3.21.9",
     "@types/node": "^22.0.0",
     "@types/vscode": "1.104.0",
+    "esbuild": "^0.28.2",
     "typescript": "7.0.2"
   }
 }
