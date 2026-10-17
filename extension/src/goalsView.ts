@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import { WebviewView, WebviewViewProvider } from 'vscode';
+import { Disposable, Webview, WebviewView, WebviewViewProvider } from 'vscode';
 import { AskState } from './ask';
 import { escapeText } from './outputText';
 import { viewHeader, viewTheme } from './viewTheme';
@@ -27,6 +27,9 @@ function presentation(state: GoalState) {
     text: checking ? '' : state.text, errors: checking ? '' : state.errors.join('\n\n') };
 }
 
+const restartLink = '<nav class="actions"><button id="restart" class="link" type="button" '
+  + 'title="Stop and start the Isabelle language server">↻ Restart</button></nav>';
+
 export function goalsHtml(state: GoalState, nonce = randomBytes(16).toString('hex')): string {
   const goal = presentation(state);
   return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
@@ -42,6 +45,9 @@ textarea:focus, button:focus-visible { outline: 1px solid var(--vscode-focusBord
 button { font: inherit; cursor: pointer; padding: 4px 10px; margin-top: 6px;
   color: var(--vscode-button-foreground); background: var(--vscode-button-background); border: 0; }
 button:disabled { opacity: .5; cursor: default; }
+button.link { padding: 0; margin: 0; background: none; color: var(--vscode-textLink-foreground); }
+button.link:hover { text-decoration: underline; }
+.actions { margin-top: 6px; font-size: .9em; }
 #ask-status, .tool { color: var(--vscode-descriptionForeground); }
 #transcript { max-height: 40vh; overflow-y: auto; }
 #transcript p { white-space: pre-wrap; overflow-wrap: anywhere; margin: 8px 0; }
@@ -56,7 +62,7 @@ button:disabled { opacity: .5; cursor: default; }
 <p id="ask-status" role="status">Enter sends · Shift+Enter adds a line</p>
 <div id="transcript" role="log" aria-label="Ask transcript"></div>
 </section>
-${viewHeader(goal.theory, goal.status)}
+${viewHeader(goal.theory, goal.status, restartLink)}
 <pre id="goal" class="source" aria-label="Goal at cursor">${escapeText(goal.text)}</pre>
 <pre id="errors" class="errors" aria-label="Diagnostics">${escapeText(goal.errors)}</pre>
 <script nonce="${nonce}">
@@ -75,6 +81,7 @@ function submit() {
 }
 send.addEventListener('click', submit);
 stop.addEventListener('click', () => vscode.postMessage({ type: 'stop' }));
+document.getElementById('restart').addEventListener('click', () => vscode.postMessage({ type: 'restart' }));
 prompt.addEventListener('keydown', event => {
   if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) { event.preventDefault(); submit(); }
 });
@@ -109,41 +116,61 @@ vscode.postMessage({ type: 'ready' });
 </script></body></html>`;
 }
 
+// One model, several webviews: the sidebar view and any panel beside the
+// editor show the same goal, transcript and header.
 export class GoalsView implements WebviewViewProvider {
-  private view?: WebviewView;
+  private webviews = new Set<Webview>();
   private focusPending = false;
   private state: GoalState = { phase: 'idle', text: '', errors: [] };
   private askState: AskState = { active: false, entries: [] };
   onAsk?: (text: string) => void;
   onStop?: () => void;
+  onRestart?: () => void;
 
-  resolveWebviewView(view: WebviewView): void {
-    this.view = view;
-    view.webview.options = { enableScripts: true, localResourceRoots: [] };
-    const messages = view.webview.onDidReceiveMessage(message => {
+  attach(webview: Webview): Disposable {
+    this.webviews.add(webview);
+    webview.options = { enableScripts: true, localResourceRoots: [] };
+    const messages = webview.onDidReceiveMessage(message => {
       if (message?.type === 'ready') {
-        this.update(this.state); this.updateAsk(this.askState);
+        void this.post(webview, { type: 'goal', goal: presentation(this.state) });
+        void this.post(webview, { type: 'askState', state: this.askState });
         if (this.focusPending) this.focusAsk();
       } else if (message?.type === 'ask' && typeof message.text === 'string') this.onAsk?.(message.text);
       else if (message?.type === 'stop') this.onStop?.();
+      else if (message?.type === 'restart') this.onRestart?.();
     });
-    view.onDidDispose(() => { messages.dispose(); this.view = undefined; });
-    view.webview.html = goalsHtml(this.state);
+    webview.html = goalsHtml(this.state);
+    return { dispose: () => { messages.dispose(); this.webviews.delete(webview); } };
+  }
+
+  resolveWebviewView(view: WebviewView): void {
+    const attached = this.attach(view.webview);
+    view.onDidDispose(() => attached.dispose());
+  }
+
+  get attached(): number { return this.webviews.size; }
+
+  // Test doubles may return nothing from postMessage.
+  private post(webview: Webview, message: unknown): Promise<boolean> {
+    return Promise.resolve(webview.postMessage(message)).then(delivered => delivered === true, () => false);
+  }
+  private broadcast(message: unknown): void {
+    for (const webview of this.webviews) void this.post(webview, message);
   }
 
   focusAsk(): void {
     this.focusPending = true;
-    void this.view?.webview.postMessage({ type: 'focus' }).then(delivered => {
-      if (delivered) this.focusPending = false;
-    });
+    for (const webview of this.webviews) {
+      void this.post(webview, { type: 'focus' }).then(delivered => { if (delivered) this.focusPending = false; });
+    }
   }
   update(state: GoalState): void {
     this.state = state;
-    void this.view?.webview.postMessage({ type: 'goal', goal: presentation(state) });
+    this.broadcast({ type: 'goal', goal: presentation(state) });
   }
   updateAsk(state: AskState): void {
     this.askState = state;
-    void this.view?.webview.postMessage({ type: 'askState', state });
+    this.broadcast({ type: 'askState', state });
   }
   snapshot(): GoalState { return { ...this.state, errors: [...this.state.errors] }; }
 }

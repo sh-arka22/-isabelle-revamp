@@ -25,7 +25,9 @@
       { "command": "isabelleRevamp.togglePrettySymbols", "title": "Isabelle: Toggle Pretty Symbols" },
       { "command": "isabelleRevamp.ask", "title": "Isabelle: Ask" },
       { "command": "isabelleRevamp.showGoals", "title": "Isabelle: Show Goals" },
-      { "command": "isabelleRevamp.showSwarm", "title": "Isabelle: Show Swarm" }
+      { "command": "isabelleRevamp.showSwarm", "title": "Isabelle: Show Swarm" },
+      { "command": "isabelleRevamp.openGoalsPanel", "title": "Isabelle: Open Goals Beside Editor" },
+      { "command": "isabelleRevamp.restartServer", "title": "Isabelle: Restart Language Server" }
     ],
     "languages": [{
       "id": "isabelle",
@@ -56,6 +58,19 @@
           "default": "isabelle",
           "scope": "machine-overridable",
           "description": "Path to the Isabelle executable (~/ is supported), or isabelle on PATH. Reload the window after changing this setting."
+        },
+        "isabelleRevamp.lockLibrary": {
+          "type": "boolean", "default": true,
+          "description": "Open files under ISABELLE_HOME and ISABELLE_HOME_USER (HOL, HOL-Analysis and ML sources reached by Ctrl-click) read-only for this session. For a permanent lock use files.readonlyInclude."
+        },
+        "isabelleRevamp.goalsPanel": {
+          "type": "string", "enum": ["beside", "sidebar", "off"], "default": "beside",
+          "enumDescriptions": [
+            "Open the Isabelle Goals panel beside the editor when the first theory becomes active.",
+            "Reveal the Isabelle Goals view in the Explorer sidebar instead.",
+            "Do not open goals automatically."
+          ],
+          "description": "Where the goals appear automatically when a theory opens. Isabelle: Open Goals Beside Editor opens the panel at any time."
         }
       }
     }

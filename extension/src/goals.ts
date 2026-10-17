@@ -43,6 +43,23 @@ export class Goals implements Disposable {
   private subscriptions: Disposable[] = [];
 
   constructor(private client: LanguageClient, private view: GoalsView) {
+    this.subscribe(client);
+  }
+
+  // A restarted server has no panels or baselines from the old one.
+  rebind(client: LanguageClient): void {
+    for (const subscription of this.subscriptions) subscription.dispose();
+    this.subscriptions = [];
+    this.client = client;
+    this.panel = undefined;
+    this.earlyStates.clear();
+    this.decorations.clear();
+    this.ranges.clear();
+    this.badRanges.clear();
+    this.subscribe(client);
+  }
+
+  private subscribe(client: LanguageClient): void {
     this.subscriptions.push(
       client.onNotification('PIDE/dynamic_output', ({ content }: { content: string }) => {
         this.dynamic = outputText(content);
