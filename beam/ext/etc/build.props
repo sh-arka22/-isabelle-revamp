@@ -1,0 +1,11 @@
+title = isabelle-revamp Beam tools
+module = $REVAMP_BEAM_JAR
+requirements = \
+  env:ISABELLE_SCALA_JAR \
+  env:ISABELLE_PIDE_MCP_JAR
+sources = \
+  src/tool_run_at.scala \
+  src/tool_find_theorems_at.scala
+services = \
+  isabelle.revamp.beam.Tools_Run_At \
+  isabelle.revamp.beam.Tools_Find_Theorems_At
