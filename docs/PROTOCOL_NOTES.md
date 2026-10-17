@@ -894,6 +894,15 @@ depended on where the caret was. The extension now starts the server with
 `-o vscode_caret_perspective=0` ("unrestricted"), which makes the perspective
 the whole text of every open theory, as `etc/options` documents.
 
+The cost: busy decorations now appear anywhere in the theory, not only near
+the caret, and a goal query that waited for *no* busy range would wait for
+the whole theory (observed: a proved `lemma first` followed by `ML
+‹OS.Process.sleep (seconds 30.0)›` had its goal withdrawn at 0.8 s and shown
+again at 30.8 s). `Goals.busyUpTo(uri, line)` therefore only counts busy
+ranges that start at or before the caret's line — the caret's command or one
+before it — for the goal, the sidebar's phase and MCP `goals_at`; the badge,
+`fully_checked` and `processing_status` keep the whole-theory view.
+
 ### Margin
 
 `PIDE/output_set_margin {margin}` and `PIDE/state_set_margin {id, margin}`

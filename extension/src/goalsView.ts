@@ -98,8 +98,11 @@ function headerButtons(canPin: boolean, paused: boolean, pinCount: number): stri
 
 export function presentation(state: GoalState) {
   const paused = state.paused === true;
-  const checking = state.phase === 'checking' || state.phase === 'ready' && state.checkStatus === 'checking';
-  const status = paused ? 'paused' : checking ? 'checking…' : {
+  const checking = state.phase === 'checking';
+  // A confirmed goal stays on show while later commands are still checked;
+  // only the badge says the theory is not settled yet.
+  const pending = checking || state.phase === 'ready' && state.checkStatus === 'checking';
+  const status = paused ? 'paused' : pending ? 'checking…' : {
     idle: 'Open a theory and place the cursor in a proof.',
     checking: 'checking…',
     ready: state.checkStatus === 'fully_checked' ? 'fully checked'
@@ -108,7 +111,7 @@ export function presentation(state: GoalState) {
     error: 'Proof error — see editor diagnostics.',
     unavailable: 'Goal state unavailable. Move the cursor to retry.',
   }[state.phase];
-  const badge = paused ? 'paused' : checking ? 'checking' : state.phase === 'error' ? 'error'
+  const badge = paused ? 'paused' : pending ? 'checking' : state.phase === 'error' ? 'error'
     : state.phase === 'unfinished' || state.checkStatus === 'unfinished' ? 'unfinished'
     : state.checkStatus === 'fully_checked' ? 'fully_checked' : state.phase;
   const settled = !checking && ['ready', 'unfinished', 'error'].includes(state.phase);

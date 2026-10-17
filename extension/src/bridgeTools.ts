@@ -124,7 +124,10 @@ export class BridgeTools {
         throw new Error('The document or cursor changed during the query. Retry goals_at.');
       }
       const { html, goalHtml, facts, messages, pins, paused, ...state } = this.view.snapshot();
-      if (['ready', 'unfinished', 'error'].includes(state.phase) && this.goals.processing(document).processed) {
+      // The answer needs the caret's command settled in this version; later
+      // commands only delay `checkStatus`, which is reported as it stands.
+      if (['ready', 'unfinished', 'error'].includes(state.phase) && this.goals.processing(document).known
+        && !this.goals.busyUpTo(document.uri.toString(), position.line)) {
         // Agents read text; the sanitised HTML stays in the sidebar.
         return { ...identity(), line: position.line, col: position.character, ...state,
           facts: (facts ?? []).map(fact => fact.text), messages: (messages ?? []).map(({ kind, text }) => ({ kind, text })) };

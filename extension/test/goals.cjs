@@ -86,6 +86,12 @@ ${sqrt2.slice(sqrt2.indexOf('theorem sqrt2_irrational'))}`;
       && state.messages?.some(message => message.kind === 'info' && message.text.includes('"2"') && message.text.includes('"nat"')));
     assert(!presentation(api.getGoalState()).empty);
     assert(goalsHtml(api.getGoalState()).includes('class="message kind-info"'));
+    // The server does not repeat unchanged output: a move within the command
+    // keeps the message once the query settles.
+    await move(lineOf('value "'), 4);
+    await until('value output survives a caret move within the command', state => state.phase === 'ready' && state.text === ''
+      && state.messages?.some(message => message.kind === 'info' && message.text.includes('"2"')) && state.position.character === 4, 15000);
+    assert.equal(presentation(api.getGoalState()).messageCount, 1);
 
     // Done: the last step of the complete proof.
     await move(lines.indexOf('qed') - 1, 5);

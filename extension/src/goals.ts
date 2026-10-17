@@ -178,6 +178,10 @@ export class Goals implements Disposable {
           line: editor!.selection.active.line, character: editor!.selection.active.character }
       : undefined;
     if (JSON.stringify(next) === JSON.stringify(this.caret)) return;
+    // The server re-sends PIDE/dynamic_output only when the formatted output
+    // changed, so a caret move within the same command gives no signal: the
+    // messages stay until the text changes or new output replaces them.
+    const sameText = next !== undefined && this.caret !== undefined && next.uri === this.caret.uri && next.version === this.caret.version;
     this.caret = next;
     const generation = ++this.generation;
     clearTimeout(this.timer);
@@ -186,7 +190,7 @@ export class Goals implements Disposable {
     clearTimeout(this.decorationTimer);
     this.releasePanel();
     this.confirmed = undefined;
-    this.messages = [];
+    if (!sameText) this.messages = [];
     this.dynamicState = undefined;
     this.requestedAt = Date.now();
     this.publish({ phase: next ? 'checking' : 'idle', text: '', errors: [] });
@@ -201,9 +205,16 @@ export class Goals implements Disposable {
     }, 10000);
   }
 
+  // The caret's command, or one before it that its state may depend on, is
+  // still running. With vscode_caret_perspective=0 the whole theory is
+  // checked, so later commands must not hide an earlier goal, as in jEdit.
+  busyUpTo(uri: string, line: number): boolean {
+    const ranges = this.ranges.get(uri);
+    return [...busyTypes].some(type => (ranges?.get(type) ?? []).some(range => range[0] <= line));
+  }
+
   private busy(): boolean {
-    const flags = this.caret && this.decorations.get(this.caret.uri);
-    return [...busyTypes].some(type => flags?.get(type));
+    return this.caret !== undefined && this.busyUpTo(this.caret.uri, this.caret.line);
   }
 
   // Paused with a state on show: live output no longer replaces it.
@@ -370,7 +381,7 @@ export class Goals implements Disposable {
   private render(): void {
     if (!this.caret || !this.available) return;
     const flags = this.decorations.get(this.caret.uri);
-    const busy = [...busyTypes].some(type => flags?.get(type));
+    const busy = this.busy();
     const errors = this.diagnostics.get(this.caret.uri) ?? [];
     const failed = errors.length > 0 || [...errorTypes].some(type => flags?.get(type));
     if (this.confirmed === undefined || busy && !this.paused) {

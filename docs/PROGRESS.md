@@ -614,7 +614,10 @@
   server only executes commands within `vscode_caret_perspective` (50) lines
   of the caret, so a theory's `end` beyond that stayed unprocessed and the
   badge stuck at `checking…` until the caret moved; the launch options now
-  add `-o vscode_caret_perspective=0` so the whole open theory is checked.
+  add `-o vscode_caret_perspective=0` so the whole open theory is checked
+  (at a cost found in review: busy ranges anywhere then hid the goal at the
+  caret until the whole theory was done — fixed by the caret-local busy test
+  in the review-fixes entry below).
 - **Test expectations changed on purpose:** `askView.cjs` now asserts that the
   Ask section comes after the header (it was first), and runs the webview
   script in the shared `fakeDom.cjs` tree instead of a flat element map.
@@ -712,3 +715,73 @@
   (the markup colours override the grammar wherever the server has checked
   the text); a pin refresh when the caret returns to its command; hover text
   for the dotted output underlines.
+
+## 2026-10-17 — Review fixes on `integrate/all` (findings 1–5 of the adversarial review)
+
+- **Changed:** four defects found by the review of the integrated tree, all
+  reproduced against the real server before the fix. (1) The rewrite on type
+  turned `"a\n"` inside `ML ‹…›` into `"a\<n>"` (the bold letters `\<a>`…`\<Z>`
+  are symbols) and `$x \in A$` inside `text ‹…›` into `\<in>`:
+  `scanContext` now records the word before the outermost open cartouche on
+  any line (`Context.command`), and `rewriteOnType` leaves `\name` alone for
+  one-letter names, inside a string within a cartouche (an ML string) and
+  inside the cartouche of `ML`, `ML_val`, `ML_prf`, `ML_command`,
+  `ML_export`, `SML_file`, `text`, `txt`, `text_raw` and the headings; inner
+  syntax in a cartouche (`lemma ‹x \forall …›`) still converts.
+  (2) With `vscode_caret_perspective=0` a busy range *anywhere* counted as
+  busy, so the goal of a proved `lemma first` was published at 0.7 s,
+  withdrawn at 0.8 s and only shown again when a 30-second `ML` block after
+  it had finished, and MCP `goals_at` failed on any theory that takes longer
+  than its 30-second budget: `Goals.busyUpTo(uri, line)` only counts busy
+  ranges that start at or before the caret's line (the caret's command or
+  one it may depend on) for the phase, `presentation()` keeps the confirmed
+  text, facts and messages while `checkStatus` is still `checking` (the badge
+  says so), and `goals_at` gates on the caret's command with `checkStatus`
+  reported as information; the relaxation of `goals2.cjs` that masked this is
+  reverted. (3) A theorem's outline range ran to the next outline command, so
+  `ML`, `value`, `text`, `thm`, `declare`, … after a lemma were "inside" it
+  and their errors or busy ranges marked the lemma: a goal item is now
+  finished by `by`, `.`, `..`, `done`, `sorry`, `oops` or the `qed` closing
+  its `proof`, and the next line-start command (a word in column 0, or a
+  known command) ends it; an unfinished goal still falls back to the next
+  outline command. (4) `follow()` cleared the Messages on every caret move,
+  but the server re-sends `PIDE/dynamic_output` only when the output changed
+  (`pretty_text_panel.scala`), so try0's suggestion and `value` output
+  vanished when the caret moved within their command: the messages are kept
+  when the caret stays in the same document version and are replaced by the
+  next output. (5) Docs: the cost of `vscode_caret_perspective=0` and the
+  `goals_at` budget are stated here, in the README, `PROTOCOL_NOTES.md`
+  ("Caret perspective") and `mcp/README.md`; the rewrite exclusions are in
+  the README and the `isabelleRevamp.symbolRewrite` description; the
+  unverified "hovering `sorry` shows the admitted goal" sentence is dropped.
+- **Passed:** `npm run compile --prefix extension` clean; `unit_symbols`
+  (context command, ML string, prose, one-letter and cartouche inner-syntax
+  cases), `unit_outline` (a mixed theory: lemma then `ML`/`value`/`text`/
+  `thm`/`declare`, multi-line `by`, `proof…qed`, `..`, `done`, `sorry`,
+  `oops`, an unfinished goal; an error and a busy span on the following
+  lines leave the lemma proved), `unit_goals`, `unit_goalsView`,
+  `unit_quickwins` (with the `askView` harness), `unit_markupXml`,
+  `unit_proofInsert`, `unit_insertProof`. Headless stock VS Code with the
+  real server, serialised under the lock: `check_m3.sh` 12 PASS, `check_goals.sh` 15, `check_goals2.sh` 18, `check_symbols.sh` 16, `check_decorations.sh` 16, `check_m4.sh` 28, `check_m8.sh` 66 (the M3–M7 chain with fakeClaude), `check_goalsLocal.sh` 9 (new: a proved lemma's goal, gutter mark and MCP `goals_at` do not wait for a later 30-second `ML` command; `goals_at` at the lemma answered in 342 ms while it ran), all exit 0.
+- **Test expectations changed on purpose:** `unit_symbols.cjs` expects
+  `scanContext` to report `command` inside an open cartouche;
+  `cursorRaces.cjs` sends busy decorations with ranges, as the server does
+  (a range-less entry no longer counts as busy at the caret); `goals2.cjs`
+  is back to waiting for the phase only, since the messages no longer wait
+  for the whole theory.
+  `m6.cjs` now expects a confirmed goal to stay on show while `checkStatus`
+  is still `checking` (only a `checking` phase hides the text).
+- **Discovered:** at `by simp` the dynamic output is the result message
+  (`theorem first: ?x + 0 = ?x`) with no state, so `goals_at` there answers
+  with empty `text` and one message; the lemma line carries the goal. The
+  LOW findings of the review stay open: the `<<`/`>>` shortcut inside
+  cartouche inner syntax (6; making `>>` a string-rule there would stop the
+  shortcut closing a `\<open>` typed in a lemma, a design question for Alex),
+  the control symbol before `<`/`>`/`&` in `outputHtml.scripts()` (7),
+  the narrowest hidden webview setting the margin (8), the first
+  Sledgehammer `reveal()` before the view is resolved (9), `\<proof>` not
+  detected as an admission by the gutter (10), per-keystroke cost on 7.6k-line
+  theories (11), `‹…›` scoped as a string by the grammar (12) and `f^^n`
+  drawn as a superscript (13).
+- **Next:** the LOW findings above, in that order; a pin refresh when the
+  caret returns to its command; hover text for the dotted output underlines.

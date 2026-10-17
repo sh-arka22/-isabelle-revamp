@@ -47,7 +47,7 @@ exports.checkCursorRaces = async function () {
     emit('PIDE/dynamic_output', { content: '<pre>UNTAGGED OLD</pre>' });
     assert.equal(state.text, 'CURRENT');
 
-    emit('PIDE/decoration', { uri, entries: [{ type: 'background_running1', content: [{}] }] });
+    emit('PIDE/decoration', { uri, entries: [{ type: 'background_running1', content: [{ range: [6, 0, 6, 10] }] }] });
     assert.equal(state.phase, 'checking');
     assert.equal(state.text, '');
     emit('PIDE/decoration', { uri, entries: [{ type: 'text_overview_error', content: [] }] });
@@ -63,7 +63,7 @@ exports.checkCursorRaces = async function () {
     const now = Date.now;
     try {
       Date.now = () => now() + 11000;
-      emit('PIDE/decoration', { uri, entries: [{ type: 'background_running1', content: [{}] }] });
+      emit('PIDE/decoration', { uri, entries: [{ type: 'background_running1', content: [{ range: [5, 0, 6, 10] }] }] });
       assert.equal(state.phase, 'checking');
       emit('PIDE/decoration', { uri, entries: [{ type: 'background_running1', content: [] }] });
       assert.equal(state.phase, 'unavailable');

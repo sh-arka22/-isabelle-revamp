@@ -16,9 +16,13 @@ exports.run = async function () {
   assert.equal(unicodeSymbols(String.raw`\<constructor>`), String.raw`\<constructor>`);
   const escaped = goalsHtml({ theory: '<img>', phase: 'error', text: '', errors: ['<script>'] });
   assert(escaped.includes('<h1>&lt;img&gt;</h1>') && escaped.includes('&lt;script&gt;'));
-  const hidden = goalsHtml({ phase: 'ready', checkStatus: 'checking', text: 'STALE', errors: ['STALE_ERROR'] });
+  // A caret still being checked hides its text; a confirmed goal stays on show
+  // while later commands are checked, with only the badge saying so.
+  const hidden = goalsHtml({ phase: 'checking', text: 'STALE', errors: ['STALE_ERROR'] });
   assert(!hidden.includes('STALE'));
-  assert(hidden.includes('checking…'));
+  const settling = goalsHtml({ phase: 'ready', checkStatus: 'checking', text: 'KEPT_GOAL', errors: [] });
+  assert(settling.includes('KEPT_GOAL'));
+  assert(settling.includes('checking…'));
   // Exercise the actual WebviewView provider, including retained state on reopen.
   const view = new GoalsView();
   const state = { theory: 'Sqrt2', phase: 'ready', checkStatus: 'fully_checked', text: 'm² = 2 * n²', errors: [] };

@@ -64,10 +64,8 @@ end
     // 16: try0's suggestion replaces the placeholder sorry after the command.
     await move(lineOf('  try0'), 3);
     // The first answer waits for the whole theory, including try0's provers.
-    // The view hides messages while the theory is still being checked, so
-    // wait for the status as well as the phase before reading the button.
-    await until('try0 suggests a proof with a sendback', state => settled(state) && state.checkStatus !== 'checking'
-      && state.messages?.some(message => message.text.startsWith('Try this:') && message.html.includes('<span class="sendback">')), 180000);
+    await until('try0 suggests a proof with a sendback', state => settled(state) && state.messages?.some(message =>
+      message.text.startsWith('Try this:') && message.html.includes('<span class="sendback">')), 180000);
     const suggestion = api.getGoalState().messages.find(message => message.text.startsWith('Try this:'));
     const [proof] = sendbackTexts(suggestion.html);
     assert.match(proof, /^by /);

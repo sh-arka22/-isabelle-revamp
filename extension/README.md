@@ -132,11 +132,19 @@ requests with your configured account/model, temporarily editing and restoring
 - **Restart the language server.** Run **Isabelle: Restart Language Server**,
   click the **Isabelle: ready / checking… / stopped** status bar item, or use
   **↻ Restart** in the goals header. The goal at the cursor returns once the
-  new server has checked the theory.
+  new server has checked the command at the cursor.
+- **The goal does not wait for the whole theory.** The server checks every
+  open theory in full (`vscode_caret_perspective=0`, so the badge and
+  **fully checked** never depend on where the cursor is), and the goal at the
+  cursor appears as soon as its own command and the ones before it are done,
+  as in jEdit; the **checking…** badge stays while later commands (a long
+  `ML` block, a slow proof) are still running. MCP `goals_at` answers on the
+  same condition within its 30-second budget and reports `checkStatus` as it
+  stands; `processing_status` still describes the whole theory.
 - **Hover.** Hovering a constant, type or operator shows Isabelle's tooltip
   (`constant "NthRoot.sqrt"` and `:: real ⇒ real`) as an Isabelle code block,
   with symbols decoded. Hovering a `value`, `thm` or `term` command shows its
-  output; hovering `sorry` shows the admitted goal.
+  output.
 - **Locked library files.** A file under `ISABELLE_HOME` or `ISABELLE_HOME_USER`
   (HOL, HOL-Analysis, ML sources, AFP components) becomes read-only for the
   session when Ctrl-click or Go to Definition opens it, so a stray keystroke
@@ -180,8 +188,13 @@ space, bracket or quote becomes `\<forall>` as you type, as in Lean; for
 `x\<^sub>1`). jEdit's shortcuts work too: `<<` at the start of a token becomes
 `\<open>`, and `>>` becomes `\<close>` when a cartouche is still open on that
 line or when it starts a token outside a quoted string, so `"x >> 2"` is left
-alone. Nothing is rewritten inside comments. **Isabelle: Insert Symbol…** picks
-from the table by name, abbreviation or glyph and inserts the ASCII escape.
+alone. Nothing is rewritten inside comments, and `\name` is left alone where
+it is not a symbol: the one-letter bold alphabet (`\n` and `\t` are escapes;
+use completion for `\<n>`), a string inside a cartouche (an ML string such as
+`ML ‹val s = "a\n"›`) and the cartouche of an ML or document command (`text
+‹$x \in A$›`, `section ‹…›`), where the backslash is LaTeX. **Isabelle: Insert
+Symbol…** picks from the table by name, abbreviation or glyph and inserts the
+ASCII escape.
 
 **Isabelle: Convert Quotes to Cartouches** rewrites outer-syntax `"…"` arguments
 of the selection (or the whole theory) to `\<open>…\<close>`, decoding `\"`,
@@ -280,7 +293,9 @@ and the theme's own colours in high contrast.
 the first reads real server output from `extension/test/fixtures/output/`) and
 then a stock VS Code host with the real server. Server HTML is never inserted
 unsanitised: see `src/outputHtml.ts` and the notes in
-[PROTOCOL_NOTES.md](../docs/PROTOCOL_NOTES.md).
+[PROTOCOL_NOTES.md](../docs/PROTOCOL_NOTES.md). `bash scripts/check_goalsLocal.sh`
+checks that a proved lemma's goal, its gutter mark and MCP `goals_at` do not
+wait for a later `ML` command that is still running.
 
 ## Pin, pause and insert (Alex's feedback 15 and 16)
 
