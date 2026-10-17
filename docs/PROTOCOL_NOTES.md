@@ -653,4 +653,3 @@ value  (10,0)  [{"value":"\"4\"\n  :: \"nat\""}, {"value":"0.268s"}, {"value":"c
   and `dotted_warning`; with the fixture, `dotted_writeln` listed the `sorry`,
   `qed` and `value` command ranges, which is the data jEdit's dotted underline
   uses.
-

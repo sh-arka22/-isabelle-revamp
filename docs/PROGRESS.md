@@ -449,4 +449,3 @@
 - **Next:** items 6–18 (Unicode input, superscripts, coloured goals, output
   underlines, outline, cartouches, the InfoView-style sidebar sections,
   Sledgehammer and per-theorem gutter ticks).
-
