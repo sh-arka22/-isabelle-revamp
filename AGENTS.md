@@ -30,7 +30,8 @@
 | `thys/`, `heavy/` | Alex | sessions (parent HOL; `heavy/` for AFP-based work, never in the required gate) |
 | `proofmap/`, `tools/revamp/map/` | ark | kernel DAG export, lock, audit |
 | `tools/revamp/docs/`, `tools/revamp/mcp_server.py`, `data/` | retinapeg | docs index, Isar-Ref index, `revamp` MCP server |
-| `vscode/` | ark | the companion extension (`src/{extension,hover/,map/,outline/}.ts`, `test/`) |
+| `extension/` | Leo (ark for hover/ProofMap) | **the** VS Code extension: goals sidebar, swarm board, ask, pretty symbols, MCP bridge (`src/*.ts`, `test/*.cjs`). The companion plan's hover cards and ProofMap viewer are added here, not in a new `vscode/` directory |
+| `mcp/`, `examples/`, `scripts/check_m*.sh`, `scripts/lsp_probe.py` | Leo | the Python MCP server for the extension's bridge, the demo theories, the live acceptance checks |
 | `beam/` | retinapeg | PIDE MCP + `run_at` component (LGPL-3.0, its own LICENSE) |
 | `agents/`, `scripts/{setup,doctor,demo-smoke}.sh` | retinapeg | agent runner, setup scripts |
 | `docs/` | shared | ADRs, `design/ui.md` (Alex), demo script, pain points, research, plans |

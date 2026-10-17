@@ -1,0 +1,71 @@
+{
+  "name": "isabelle-revamp",
+  "displayName": "Isabelle Revamp",
+  "description": "Isabelle/HOL in stock VS Code using the installed Isabelle language server.",
+  "version": "0.1.0",
+  "publisher": "hymanimy",
+  "private": true,
+  "license": "UNLICENSED",
+  "engines": { "vscode": "^1.104.0" },
+  "categories": ["Programming Languages"],
+  "main": "./out/extension.js",
+  "activationEvents": ["onLanguage:isabelle", "onView:isabelleRevamp.goals", "onView:isabelleRevamp.swarm"],
+  "scripts": {
+    "compile": "tsc -p .",
+    "vscode:prepublish": "npm run compile"
+  },
+  "contributes": {
+    "views": {
+      "explorer": [
+        { "id": "isabelleRevamp.goals", "name": "Isabelle Goals", "type": "webview" },
+        { "id": "isabelleRevamp.swarm", "name": "Isabelle Swarm", "type": "webview" }
+      ]
+    },
+    "commands": [
+      { "command": "isabelleRevamp.togglePrettySymbols", "title": "Isabelle: Toggle Pretty Symbols" },
+      { "command": "isabelleRevamp.ask", "title": "Isabelle: Ask" },
+      { "command": "isabelleRevamp.showGoals", "title": "Isabelle: Show Goals" },
+      { "command": "isabelleRevamp.showSwarm", "title": "Isabelle: Show Swarm" }
+    ],
+    "languages": [{
+      "id": "isabelle",
+      "aliases": ["Isabelle", "Isar"],
+      "extensions": [".thy"],
+      "configuration": "./language-configuration.json"
+    }],
+    "grammars": [{
+      "language": "isabelle",
+      "scopeName": "source.isabelle",
+      "path": "./syntaxes/isabelle.tmLanguage.json"
+    }],
+    "configurationDefaults": {
+      "[isabelle]": {
+        "editor.tabCompletion": "on",
+        "editor.quickSuggestions": { "other": "on", "comments": "on", "strings": "on" }
+      }
+    },
+    "configuration": {
+      "title": "Isabelle Revamp",
+      "properties": {
+        "isabelleRevamp.prettySymbols": {
+          "type": "boolean", "default": true,
+          "description": "Display ASCII Isabelle symbols as mathematics; reveal source at the cursor. Does not change the file or source coordinates."
+        },
+        "isabelleRevamp.executable": {
+          "type": "string",
+          "default": "isabelle",
+          "scope": "machine-overridable",
+          "description": "Path to the Isabelle executable (~/ is supported), or isabelle on PATH. Reload the window after changing this setting."
+        }
+      }
+    }
+  },
+  "dependencies": {
+    "vscode-languageclient": "10.1.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/vscode": "1.104.0",
+    "typescript": "7.0.2"
+  }
+}

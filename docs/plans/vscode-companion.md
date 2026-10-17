@@ -2,6 +2,7 @@
 
 > [!IMPORTANT]
 > **Status: proposal**, PLAN.md §11 "plan first": post as the issue bodies, a human approves (≤ 5 min), then one small PR per issue. No extension code exists on `main` yet.
+> **Update (after merging Leo's branch):** extension code now exists at `extension/` (M1–M9: goals sidebar, pretty symbols, swarm, ask, MCP bridge). Implement #9 and #10 **inside `extension/`** rather than a new `vscode/` directory; the scaffold, settings names and fixtures below apply with that path change.
 > **Owner:** ark. **Reviewers:** Alex signs off the look from light/dark screenshots (PLAN §2); retinapeg owns the two inputs (`docs.jsonl`, `data/isar-ref.jsonl`). **Date:** Sat 17 Oct 2026.
 
 > [!NOTE]
