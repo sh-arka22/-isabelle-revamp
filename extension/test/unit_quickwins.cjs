@@ -64,11 +64,19 @@ exports.check = async function () {
   assert.deepEqual(sidebar.posted.at(-1), panel.posted.at(-1), 'both webviews receive the same message');
   panel.inbound({ type: 'restart' });
   assert.equal(restarts, 1);
+  // One margin for both webviews: the narrowest, reported only when it changes.
+  const margins = [];
+  view.onResize = columns => margins.push(columns);
+  sidebar.inbound({ type: 'resize', columns: 60 });
+  panel.inbound({ type: 'resize', columns: 40 });
+  sidebar.inbound({ type: 'resize', columns: 55 });
+  assert.deepEqual(margins, [60, 40], 'a wider webview does not change the narrowest width');
   sidebar.inbound({ type: 'ready' });
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(sidebar.posted.filter(message => message.type === 'goal').length, 2, 'ready replays the current goal');
   second.dispose();
   assert.equal(view.attached, 1);
+  assert.deepEqual(margins, [60, 40, 55], 'detaching the narrow webview reports the remaining width');
   view.update({ phase: 'idle', text: '', errors: [] });
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(panel.posted.filter(message => message.type === 'goal').length, 1, 'a detached webview receives nothing');

@@ -290,7 +290,9 @@ function columns() {
   const charWidth = probe.getBoundingClientRect().width / 10;
   probe.remove();
   const style = getComputedStyle(document.body);
-  const width = document.body.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+  // The window width, not the body's: a vertical scrollbar that comes and
+  // goes with the content must not re-wrap the goal.
+  const width = (window.innerWidth || document.body.clientWidth) - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
   return charWidth > 0 ? Math.floor(width / charWidth) : 0;
 }
 let resizeTimer, lastColumns = 0;
@@ -363,6 +365,8 @@ export function parseLink(link: unknown): { path: string; line: number } | undef
 
 export class GoalsView implements WebviewViewProvider {
   private webviews = new Set<Webview>();
+  private columns = new Map<Webview, number>();
+  private reported?: number;
   private focusPending = false;
   private state: GoalState = { phase: 'idle', text: '', errors: [] };
   private askState: AskState = { active: false, entries: [] };
@@ -387,7 +391,7 @@ export class GoalsView implements WebviewViewProvider {
       else if (message?.type === 'stop') this.onStop?.();
       else if (message?.type === 'restart') this.onRestart?.();
       else if (message?.type === 'open') { const link = parseLink(message.link); if (link) this.onOpen?.(link); }
-      else if (message?.type === 'resize' && Number.isInteger(message.columns) && message.columns > 0) this.onResize?.(message.columns);
+      else if (message?.type === 'resize' && Number.isInteger(message.columns) && message.columns > 0) this.resized(webview, message.columns);
       else if (message?.type === 'insert' && typeof message.text === 'string' && message.text.trim()) this.onInsert?.(message.text);
       else if (message?.type === 'action' && typeof message.action === 'string') {
         const data = Object.fromEntries(Object.entries(message.data ?? {})
@@ -396,7 +400,17 @@ export class GoalsView implements WebviewViewProvider {
       }
     });
     webview.html = goalsHtml(this.state);
-    return { dispose: () => { messages.dispose(); this.webviews.delete(webview); } };
+    return { dispose: () => { messages.dispose(); this.webviews.delete(webview); this.columns.delete(webview); this.resized(); } };
+  }
+
+  // One pretty-print margin for every attached webview: the narrowest one,
+  // reported only when it changes.
+  private resized(webview?: Webview, columns?: number): void {
+    if (webview && columns !== undefined) this.columns.set(webview, columns);
+    const narrowest = Math.min(...this.columns.values());
+    if (!Number.isFinite(narrowest) || narrowest === this.reported) return;
+    this.reported = narrowest;
+    this.onResize?.(narrowest);
   }
 
   resolveWebviewView(view: WebviewView): void {
