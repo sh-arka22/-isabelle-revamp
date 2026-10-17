@@ -71,7 +71,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ```
 
-# Decorations, palette and outline
+## Decorations, palette and outline
 
 `src/palette.ts` carries the `isabelle.text_color` defaults of the official
 Isabelle2025-2 VS Code extension (`src/Tools/VSCode/extension/package.json`,
@@ -86,7 +86,7 @@ comments, strings and cartouches; headings nest; `begin … end` blocks contain;
 items fold to the next item) follows yfprojects' `outline.ts`; `src/outlineModel.ts`
 is written on top of this project's own `isarTokens` lexer.
 
-# yfprojects/vscode-isabelle colour table
+## yfprojects/vscode-isabelle colour table
 
 The light/dark text colours in `src/viewTheme.ts` (`textColours`) are the
 `ISABELLE_COLORS` table of `src/colors.ts` in yfprojects' `vscode-isabelle`

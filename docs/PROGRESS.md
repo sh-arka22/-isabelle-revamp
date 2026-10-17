@@ -662,3 +662,53 @@
   `action` message.
 - **Next:** Sledgehammer results as messages with the same Insert button
   (Alex's 17), and a refresh of a pin when the caret returns to its command.
+
+## 2026-10-17 — Integration of Alex's feedback round on `integrate/all`
+
+- **Changed:** merged `feat/quickwins` (items 1–5), `feat/symbols` (6, 7, 11),
+  `feat/decorations` (9, 10, 18), `feat/sledgehammer` (17) and `feat/goals`
+  (8, 12–16) with `--no-ff`, in that order. Conflicts were resolved by hand so
+  that every feature keeps its registrations: `extension.ts` activates in the
+  order symbols table → client (`startClient()` with the hover and diagnostics
+  middleware) → goals → symbol typing, decorations, outline and theorem marks
+  → swarm → Sledgehammer → restart command → panels; the server runs with both
+  `vscode_unicode_symbols_output=true` and `vscode_caret_perspective=0`.
+  `SymbolTyping` and `Sledgehammer` gained `rebind(client)` next to
+  `Goals.rebind`, so **Isabelle: Restart Language Server** re-requests the
+  session abbreviations and keeps receiving `PIDE/sledgehammer_*`;
+  `Goals.rebind` fires `onDidDecorate` for every painted document so the
+  editor painters drop the old server's markup. `goalsView.ts` keeps the
+  InfoView sections, pins, pause and insert buttons on top of the
+  multi-webview `attach()` model (sidebar and panel beside the editor), with
+  the **↻ Restart** link as the default header action posting its own
+  message. With two webviews each reporting its width, the server margin
+  flapped and a scrollbar re-wrapped the goal after a programmatic margin:
+  `GoalsView` now passes on the narrowest reported width only when it
+  changes, and the webview measures `window.innerWidth`.
+  `package.json` has one `contributes` block (3 views, 16 commands,
+  `view/title` and `commandPalette` menus, 8 settings); the README gained a
+  commands, views and settings table and the notices one heading level.
+- **Passed:** `npm run compile --prefix extension` clean (TypeScript 7,
+  strict) and every pure check (`unit_quickwins`, `unit_symbols`,
+  `unit_outline`, `unit_markupXml`, `unit_proofInsert`, `unit_goals`,
+  `unit_goalsView`, `unit_insertProof`, the `askView` harness). In headless
+  stock VS Code with the real server, serialised under one lock, on the
+  final tree: `check_m3.sh` (12 PASS), `check_quickwins.sh` (24),
+  `check_symbols.sh` (15), `check_decorations.sh` (16),
+  `check_sledgehammer.sh` (17), `check_goals.sh` (14), `check_goals2.sh`
+  (18), `check_m4.sh` (28), `check_m6.sh` (46, chains M3–M5 and the
+  grammar), `check_m9a.sh` (45, chains M3–M5) and `check_m8.sh` (66,
+  chains M3–M7 with the fake Claude); all exit 0 and leave the examples
+  unchanged. The first run after the merges failed `check_goals.sh` (the
+  margin flap above) and `check_goals2.sh` (a timing race on the insert
+  button); both pass after the fix in the same run order.
+- **Discovered:** the merge needed no test expectation changes beyond the two
+  the feature branches had already made (`highlighting.cjs` for the new
+  grammar scopes, `unit_goalsView.cjs` for the `insert` message);
+  `askView.cjs` now runs the restart click before the first goal update,
+  because the fake DOM does not rebuild `#header-actions` from `innerHTML`.
+- **Next:** decide whether `isabelleRevamp.decorations.semanticColours`
+  should stay on by default now that the grammar colours inner syntax too
+  (the markup colours override the grammar wherever the server has checked
+  the text); a pin refresh when the caret returns to its command; hover text
+  for the dotted output underlines.

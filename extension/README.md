@@ -8,6 +8,11 @@ fully checked proof that sqrt 2 is irrational in `examples/Sqrt2.thy`, with no
 M6 adds a theme-aware sidebar, Unicode output and a theory/check-status header.
 M7 adds **Isabelle Swarm**, a live card board for six proof steps filled through MCP.
 M8 adds **Ask Isabelle**: streamed Claude Code replies and proof edits through those same tools.
+After Alex's first hands-on test the extension gained the goals panel beside the
+editor, a restart command, hover code blocks, locked library files, richer Isar
+colours, symbol input and display, editor markup colours, outline and theorem
+marks, inline Sledgehammer/try0, and the InfoView-style goals sections with
+pins, pause and copy-to-editor; see the sections below.
 The goals sidebar then gained Isabelle's output colours, facts, messages and a done state,
 then pinned goals, a pause button and copy-to-editor for suggested proofs.
 
@@ -264,8 +269,9 @@ complete** banner when a step is finished), **Facts** (the `this:` / `using
 this:` lines of the state), **Messages** (the command's output: `value` and
 `thm` results, `try0` suggestions, warnings and errors, each with an icon and
 a count badge) and **Ask**. A position outside any proof shows **Not in a
-proof**. The goal wraps to the panel's width: the webview reports its column
-count and the extension passes it to the server as the pretty-print margin.
+proof**. The goal wraps to the panel's width: each webview reports its column
+count and the extension passes the narrowest (sidebar or panel beside the
+editor) to the server as the pretty-print margin.
 Colours follow the official Isabelle/VSCode palette for light and dark themes
 and the theme's own colours in high contrast.
 
@@ -300,6 +306,47 @@ and the caret lands after the inserted text.
 and the webview checks, then a stock VS Code host with the real server: `try0`'s
 suggestion replacing `sorry` and checking clean, a pin that outlives cursor
 moves and is flagged stale by an edit, pause and resume, and unpin all.
+
+## Commands, views and settings
+
+Every command is in the Command Palette under the **Isabelle:** prefix.
+
+| Command | What it does |
+|---|---|
+| **Isabelle: Show Goals** | Reveal the **Isabelle Goals** view in the Explorer. |
+| **Isabelle: Open Goals Beside Editor** | Open the goals panel in the column to the right (the same model as the view). |
+| **Isabelle: Pin Goal** | Keep the goal at the cursor on show as a card above the live goal. |
+| **Isabelle: Unpin All Goals** | Drop every pinned card. |
+| **Isabelle: Toggle Pause Goals** | Stop or resume following the cursor. |
+| **Isabelle: Ask** | Focus the Ask box of the goals view (Claude Code through the MCP bridge). |
+| **Isabelle: Show Swarm** | Reveal the **Isabelle Swarm** card board. |
+| **Isabelle: Sledgehammer** | Run Sledgehammer at the cursor's command; results as CodeLens, hover and view cards. |
+| **Isabelle: try0** | The same query with try0's methods only (no ATP or SMT solver). |
+| **Isabelle: Cancel Sledgehammer** | Cancel the running query. |
+| **Isabelle: Show Sledgehammer** | Reveal the **Isabelle Sledgehammer** view in the Explorer. |
+| **Isabelle: Toggle Pretty Symbols** | Show or hide the Unicode display of `\<symbol>` escapes and scripts. |
+| **Isabelle: Insert Symbol…** | Pick a symbol by name, abbreviation or glyph; inserts the ASCII escape. |
+| **Isabelle: Convert Quotes to Cartouches** | Rewrite outer-syntax `"…"` arguments of the selection or theory to `\<open>…\<close>`. |
+| **Isabelle: Restart Language Server** | Stop and start `isabelle vscode_server` (also the status bar item and **↻ Restart** in the goals header). |
+
+**Isabelle: Insert Sledgehammer Proof** (`isabelleRevamp.sledgehammerInsert`)
+is the internal command behind the CodeLens and hover **Insert** links; it is
+hidden from the palette.
+
+Views: **Isabelle Goals** (Explorer, and the panel beside the editor),
+**Isabelle Swarm** and **Isabelle Sledgehammer** (Explorer). The status bar
+shows `Isabelle: starting… | ready | checking… | stopped`.
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `isabelleRevamp.executable` | `isabelle` | Path to the Isabelle executable (`~/` allowed). |
+| `isabelleRevamp.prettySymbols` | `true` | Display `\<forall>` as `∀`, `\<^sup>2` as `²`; the file stays ASCII. |
+| `isabelleRevamp.symbolRewrite` | `true` | `\forall␣` → `\<forall>`, `<<` → `\<open>`, `>>` → `\<close>` as you type. |
+| `isabelleRevamp.lockLibrary` | `true` | Library files under `ISABELLE_HOME`/`ISABELLE_HOME_USER` open read-only for the session. |
+| `isabelleRevamp.goalsPanel` | `beside` | Where the goals open automatically: `beside`, `sidebar` or `off`. |
+| `isabelleRevamp.decorations.semanticColours` | `true` | Paint Isabelle's markup colours (free, bound, skolem, keywords…) over the grammar. |
+| `isabelleRevamp.decorations.processingBackground` | `true` | Shade unprocessed and running commands. |
+| `isabelleRevamp.decorations.theoremMarks` | `true` | Gutter marks: proved ✓✓, admitted, failed, checking. |
 
 ## Run the goal probe
 
