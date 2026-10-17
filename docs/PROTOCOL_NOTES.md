@@ -620,3 +620,71 @@ at line 1, columns 7–11 returned a single completion with label/insertText
 `\<Sum>`, filterText `\Sum`, detail `\<Sum> (symbol "∑")`, and a text edit
 replacing exactly `[1,7,1,11]` with `\<Sum>`. The accepted document contains
 ASCII, not `∑`. The receipt is `.dev-host/m9a-completion.json`.
+
+## Item 17 — Sledgehammer query (2026-10-17, Linux x86_64 container)
+
+Observed with `scripts/sledgehammer_probe.py` against the unmodified
+Isabelle2025-2 `vscode_server` started with the extension's options, then in
+headless stock VS Code (`scripts/check_sledgehammer.sh`). The server exposes
+exactly one query operation (`sledgehammer_query`, `vscode_sledgehammer.scala`);
+`try0` has no query of its own.
+
+```json
+{"method":"PIDE/sledgehammer_provers_request","params":{}}
+{"method":"PIDE/sledgehammer_provers_response","params":{"provers":"cvc5 verit z3 e spass vampire zipperposition"}}
+{"method":"PIDE/caret_update","params":{"uri":"FILE_URI","line":4,"character":6}}
+{"method":"PIDE/sledgehammer_request","params":{"provers":"cvc5 verit z3 e spass vampire zipperposition","isar":false,"try0":true}}
+{"method":"PIDE/sledgehammer_output","params":{"content":""}}
+{"method":"PIDE/sledgehammer_status","params":{"message":"Waiting for evaluation of context ..."}}
+{"method":"PIDE/sledgehammer_status","params":{"message":"Sledgehammering ..."}}
+{"method":"PIDE/sledgehammer_output","params":{"content":"<writeln_message>verit found a proof...</writeln_message>"}}
+{"method":"PIDE/sledgehammer_output","params":{"content":"<writeln_message>verit found a proof...</writeln_message><writeln_message>verit: Try this: <sendback padding=\"command\" id=\"-3\"><block indent=\"2\"><block indent=\"2\">by simp</block></block></sendback> (4 ms)</writeln_message>"}}
+{"method":"PIDE/sledgehammer_status","params":{"message":"Finished"}}
+```
+
+- The query runs at the command under the server's caret, so the client sends
+  `PIDE/caret_update` immediately before the request. All three request
+  fields are required; `isar: false` means Isabelle's `isar_proofs = smart`.
+- `PIDE/sledgehammer_output` has **only** `content`: the `position`,
+  `sendback_id` and `state_location` fields declared in the official
+  `extension/src/lsp.ts` are never sent (`LSP.Sledgehammer_Output` in
+  `lsp.scala` builds `{"content": …}`). Content is `XML.string_of_body` of
+  the messages so far — Isabelle XML markup, not HTML, unaffected by
+  `vscode_html_output` — and each output replaces the previous one; the first
+  output of a run is `""`. Top-level elements are `<writeln_message>` and
+  `<error_message>`; a proof is a `<sendback padding="command" id="…">`
+  element, nested in `<block indent="2">` for ATP results and bare for
+  try0-method results. `Pretty.unbreakable` has already turned breaks into
+  spaces. Messages are not passed through `Symbol.output`
+  (`vscode_resources.scala:334` applies it to hover/diagnostic text only), so
+  symbols stay in ASCII notation; the extension decodes them for display and
+  inserts the raw text.
+- Status strings are exactly `Waiting for evaluation of context ...`,
+  `Sledgehammering ...` and `Finished`. A `Finished` with empty output also
+  arrives on server start and exit without any request.
+- `PIDE/sledgehammer_sendback {"text":"by simp"}` answers with
+  `PIDE/sledgehammer_insert {"uri":"FILE_URI","line":4,"character":34,"text":"by simp"}`:
+  the end of the query command's core range (after the closing quote of
+  `lemma add_zero: "x + 0 = (x::nat)"`). The text is echoed verbatim and the
+  server leaves any following `sorry` in place; inserting on a new line as the
+  official client does would leave `sorry` after the finished proof, so the
+  client replaces a `sorry`/`oops` directly after that position instead.
+- `PIDE/sledgehammer_cancel` ends the run with
+  `<error_message>Interrupt</error_message>` and `Finished` about 5–6 s later.
+- With the caret on `sorry` or at theory level the output is
+  `<error_message>Unknown proof context</error_message>`, statuses
+  `Waiting…` then `Finished`, without `Sledgehammering`.
+- `provers: ""` is **not** try0-only: `default_provers_param_value`
+  (`sledgehammer_commands.ML:172`) is the installed solvers plus every try0
+  method, and on `x + 0 = (x::nat)` the methods answered first
+  (`presburger`, `simp`, `auto`, `linarith`). Naming only try0's registered
+  methods (`simp auto blast fast fastforce force meson satx linarith
+  presburger algebra argo order metis`, `HOL/Try0.thy` and `HOL/Try0_HOL.thy`)
+  gives a try0-only run, since `Sledgehammer_Prover_Tactic.is_tactic_prover`
+  is `Try0.get_proof_method`.
+- Live timings here (all provers, `isar: false`, `try0: true`):
+  `lemma "x + 0 = (x::nat)"` 7.5 s cold / 2.5 s warm with `verit` or `cvc5`
+  first and `by simp` from preplay; `lemma "rev (rev xs) = xs"` 9.4 s cold /
+  5.9 s warm; try0-only on `rev_rev` 1.6 s (`simp`, `auto`, `fastforce`,
+  `force`, `metis rev_rev_ident`). cvc5, veriT, E, SPASS, Vampire and
+  Zipperposition all found proofs; z3 reported none in these runs.

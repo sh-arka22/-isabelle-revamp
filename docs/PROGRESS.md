@@ -401,3 +401,47 @@
 - **Would do differently:** enable formula completions at language registration
   time and separate source representation from display from the first editor
   milestone.
+
+## 2026-10-17 — Alex's item 17: inline Sledgehammer and try0
+
+- **Changed:** added **Isabelle: Sledgehammer**, **Isabelle: try0** and
+  **Isabelle: Cancel Sledgehammer**, all at the caret's command through the
+  stock server's `PIDE/sledgehammer_*` query, plus the **Isabelle
+  Sledgehammer** view (provers field prefilled from the server, Run / try0 /
+  Cancel, status line, one card per proof with **Insert**, a collapsible
+  message log). The command's line carries a CodeLens (`Sledgehammer:
+  running…`, then `Try this: by simp` per proof; click inserts) and a hover
+  with the same proofs and Insert links, as Alex asked. Insert goes through
+  `PIDE/sledgehammer_sendback` → `PIDE/sledgehammer_insert`, so the proof
+  lands at the end of the query command: a `sorry`/`oops` directly after it is
+  replaced, otherwise the proof starts an indented new line (the official
+  client only breaks the line). Results belong to one document+command, shift
+  with edits above and clear when that line changes. New pure modules
+  `markupXml.ts` (Isabelle XML markup → tree, text, messages, sendbacks) and
+  `proofInsert.ts`; `sledgehammer.ts` and `sledgehammerView.ts` (CSP
+  `default-src 'none'`, DOM built with `textContent`, never `innerHTML`);
+  `scripts/sledgehammer_probe.py` captured the fixtures in
+  `extension/test/fixtures/sledgehammer/`. **try0** names only try0's
+  registered methods as provers, which Isabelle2025-2 also treats as
+  Sledgehammer tactic provers. No Isabelle changes; `.thy` files stay ASCII.
+- **Passed:** `node extension/test/unit_markupXml.cjs` and
+  `unit_proofInsert.cjs` on the live fixtures; `bash
+  scripts/check_sledgehammer.sh` exited 0 in headless stock VS Code with the
+  real server (17 live checks): running lens and hover, `by simp` from
+  try0 preplay, lens/hover results on the lemma line only, sendback insertion
+  replacing a same-line `sorry`, a try0-only run (only simp/auto/force/
+  fastforce/metis reported) replacing a next-line `sorry`, the theory then
+  **fully checked** with no diagnostics, cancellation of a lemma needing
+  induction (`Interrupt`), and anchor shifting/clearing on edits.
+  `bash scripts/check_m3.sh` still passes (12 PASS, exit 0).
+- **Discovered:** `PIDE/sledgehammer_output` carries only `content` (XML
+  markup, cumulative, first one empty), not the `position`/`sendback_id`
+  fields in the official `lsp.ts`; `provers: ""` means the default list
+  (installed solvers plus try0 methods), not a try0-only run; the insert
+  position is after the statement, so an existing `sorry` must be handled by
+  the client; on `sorry` or outside a proof the server answers
+  `Unknown proof context`. Timings and shapes are in `PROTOCOL_NOTES.md`.
+- **Next:** reload the development host, open `examples/Swarm.thy`, put the
+  cursor on a `have` and run **Isabelle: Sledgehammer** to see the lens,
+  hover and view; Isar proofs (`isar: true`) and a per-`sorry` batch run are
+  not exposed yet.
