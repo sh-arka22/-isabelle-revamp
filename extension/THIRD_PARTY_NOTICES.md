@@ -117,3 +117,14 @@ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
+
+## Sledgehammer
+
+`src/sledgehammer.ts` follows the message sequence of
+`Isabelle2025-2.app/src/Tools/VSCode/extension/src/sledgehammer_panel.ts`
+(authors: Diana Korchmar, Makarius): caret update, `PIDE/sledgehammer_request`,
+sendback and the insert rule "a new line unless the line is blank", extended
+here to replace a following `sorry`. The parser in `src/markupXml.ts` is
+written for this repository; the rule that an `xml_body` of a wrapped element
+is not visible text follows `markup_render.ts` of yfprojects' vscode-isabelle
+(BSD-3). The Isabelle licence above covers the ported sequence.

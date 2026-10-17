@@ -223,6 +223,34 @@ runs the pure outline/status checks (`node extension/test/unit_outline.cjs`)
 and the live host: proved, admitted and failed versions of `Sqrt2.thy`,
 document symbols, folding, workspace symbols and painted markup counts.
 
+## Sledgehammer and try0 (Alex's item 17)
+
+Put the cursor on a lemma (or any proof command with a goal) and run
+**Isabelle: Sledgehammer** or **Isabelle: try0**. The query runs in the
+unmodified server; while it runs the command's line shows a
+`Sledgehammer: running…` CodeLens (click cancels, as does **Isabelle: Cancel
+Sledgehammer**). Each proof found becomes a `Try this: by simp` CodeLens and a
+hover entry with an **Insert** link; the **Isabelle Sledgehammer** view in the
+Explorer lists the same proofs as cards with **Insert** buttons, the provers
+field (prefilled from the server's `sledgehammer_provers`), Run/try0/Cancel
+and a collapsible message log. **try0** names only try0's methods as provers,
+so no ATP or SMT solver runs; Sledgehammer results found by one of those
+methods are labelled `try0` too.
+
+Insert asks the server where the proof goes (`PIDE/sledgehammer_sendback` →
+`PIDE/sledgehammer_insert`): the end of the query command. A `sorry` or `oops`
+directly after it is replaced; otherwise the proof starts a new line indented
+under the statement. The inserted text is the server's ASCII proof text.
+Results belong to that one command and disappear once its line is edited,
+inserted into, or the file is closed.
+
+`bash scripts/check_sledgehammer.sh <VS Code executable>` runs the pure parser
+and insertion checks, then a live run: Sledgehammer and try0 on a two-lemma
+fixture under `.dev-host/`, insertion through the server, the fully checked
+theory afterwards, cancellation on a lemma that needs induction, and lens
+and hover providers. `python3 scripts/sledgehammer_probe.py --isabelle …`
+captures the raw query traffic and fixtures.
+
 ## Run the goal probe
 
 ```sh

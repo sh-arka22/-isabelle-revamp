@@ -1,6 +1,6 @@
 import { homedir } from 'node:os';
 import { resolve } from 'node:path';
-import { commands, Disposable, ExtensionContext, Hover, MarkdownString, StatusBarAlignment, TextEditor, window, workspace } from 'vscode';
+import { commands, Disposable, ExtensionContext, Hover, languages, MarkdownString, StatusBarAlignment, TextEditor, window, workspace } from 'vscode';
 import { LanguageClient, ServerOptions, State } from 'vscode-languageclient/node';
 import { Goals } from './goals';
 import { GoalsView } from './goalsView';
@@ -18,6 +18,8 @@ import { ServerStatus } from './serverStatus';
 import { SymbolTyping } from './symbolTyping';
 import { Swarm } from './swarm';
 import { Ask } from './ask';
+import { Sledgehammer } from './sledgehammer';
+import { SledgehammerView } from './sledgehammerView';
 
 // Minimal startup adapted from Isabelle2025-2:
 // src/Tools/VSCode/extension/src/extension.ts:97–128.
@@ -142,10 +144,12 @@ export async function activate(context: ExtensionContext) {
         status.set('ready');
         goals?.ready(window.activeTextEditor ?? visibleTheory());
         typing.requestAbbrevs();
+        sledgehammer.ready();
         refreshStatus();
       } else {
         status.set(event.newState === State.Starting ? 'starting' : 'stopped');
         goals?.unavailable();
+        sledgehammer.unavailable();
       }
     })];
     return started;
@@ -161,14 +165,30 @@ export async function activate(context: ExtensionContext) {
     window.registerWebviewViewProvider('isabelleRevamp.swarm', swarm.view),
     commands.registerCommand('isabelleRevamp.showSwarm', () => commands.executeCommand('isabelleRevamp.swarm.focus')));
   swarm.follow(window.activeTextEditor);
+  const sledgehammer = new Sledgehammer(client, new SledgehammerView());
+  const theories = { scheme: 'file', language: 'isabelle' };
+  context.subscriptions.push(sledgehammer,
+    window.registerWebviewViewProvider('isabelleRevamp.sledgehammer', sledgehammer.view),
+    languages.registerCodeLensProvider(theories, sledgehammer),
+    languages.registerHoverProvider(theories, sledgehammer),
+    commands.registerCommand('isabelleRevamp.sledgehammer', () => sledgehammer.run('sledgehammer')),
+    commands.registerCommand('isabelleRevamp.try0', () => sledgehammer.run('try0')),
+    commands.registerCommand('isabelleRevamp.sledgehammerCancel', () => sledgehammer.cancel()),
+    commands.registerCommand('isabelleRevamp.sledgehammerInsert', (text: unknown) => {
+      if (typeof text === 'string') return sledgehammer.insert(text);
+    }),
+    commands.registerCommand('isabelleRevamp.showSledgehammer', () =>
+      commands.executeCommand('isabelleRevamp.sledgehammer.focus')));
   let restarting: Promise<void> | undefined;
   const restart = async () => {
     status.set('starting');
     goals?.unavailable();
+    sledgehammer.unavailable();
     try { await client?.dispose(); } catch (error) { output.warn(`Stopping the old server: ${String(error)}`); }
     client = startClient();
     goals?.rebind(client);
     typing.rebind(client);
+    sledgehammer.rebind(client);
     try {
       await client.start();
       output.info('Isabelle language server restarted (HOL).');
@@ -235,7 +255,8 @@ export async function activate(context: ExtensionContext) {
     selectSwarmStep: (uri: string, version: number, id: string) => swarm.select(uri, version, id),
     getLockedDocuments: () => [...locked], getLibraryRoots: () => [...roots],
     getGoalPanelState: () => ({ open: panel.open, autoOpened, attached: view.attached }),
-    getServerStatus: () => status.phase };
+    getServerStatus: () => status.phase,
+    getSledgehammerState: () => sledgehammer.snapshot() };
 }
 
 export async function deactivate(): Promise<void> {
