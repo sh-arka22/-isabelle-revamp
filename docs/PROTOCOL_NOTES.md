@@ -620,3 +620,36 @@ at line 1, columns 7–11 returned a single completion with label/insertText
 `\<Sum>`, filterText `\Sum`, detail `\<Sum> (symbol "∑")`, and a text edit
 replacing exactly `[1,7,1,11]` with `\<Sum>`. The accepted document contains
 ASCII, not `∑`. The receipt is `.dev-host/m9a-completion.json`.
+
+## Quick wins: hover shapes and decorations with output
+
+Observed with the same launch options as the extension (Isabelle2025-2 Linux,
+`vscode_pide_extensions=true`), opening the M3 placeholder plus
+`value "(2::nat) + 2"` and asking `textDocument/hover` after the theory had
+settled (no busy decoration ranges):
+
+```text
+sqrt   (4,27)  [{"language":"plaintext","value":"constant \"NthRoot.sqrt\""},
+                {"language":"plaintext","value":":: real \\<Rightarrow> real"}]
+real   (4,37)  {"language":"plaintext","value":"notation: application"}
+\<rat> (4,56)  [constant "Rat.field_char_0_class.Rats", ":: real set"]
+sorry  (7,4)   [show sqrt 2 \<notin> \<rat>, "Successful attempt to solve goal by exported rule: …",
+                "Skipped proof", command span "sorry", command "sorry"]
+value  (10,0)  [{"value":"\"4\"\n  :: \"nat\""}, {"value":"0.268s"}, {"value":"command \"value\""}]
+```
+
+- `contents` is one MarkedString object or a list of them, each
+  `{language: "plaintext", value}`; `range` covers the hovered token. Symbol
+  escapes stay ASCII unless `vscode_unicode_symbols_output=true`. Before the
+  theory is processed every hover answers `{"contents": []}`.
+- `vscode-languageclient` turns each object into a `MarkdownString` code
+  fence (`appendCodeblock(value, "plaintext")`) before `provideHover`
+  middleware runs; `src/hoverText.ts` strips that fence, decodes the symbols
+  and the extension re-fences the text as `isabelle` so our grammar colours it.
+- `initialize` advertises hover, definition, completion, document highlight and
+  code actions, but no `documentSymbolProvider`; `textDocument/documentSymbol`
+  gets no reply at all.
+- The full decoration snapshot includes `dotted_writeln`, `dotted_information`
+  and `dotted_warning`; with the fixture, `dotted_writeln` listed the `sorry`,
+  `qed` and `value` command ranges, which is the data jEdit's dotted underline
+  uses.

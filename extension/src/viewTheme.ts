@@ -27,7 +27,8 @@ body.vscode-high-contrast header, body.vscode-high-contrast-light header {
   border-color: var(--vscode-contrastBorder);
 }`;
 
-export function viewHeader(theory: string, status: string): string {
+// `actions` is trusted markup built by the caller, never server content.
+export function viewHeader(theory: string, status: string, actions = ''): string {
   return `<header><h1>${escapeText(theory)}</h1>
-<p class="status" role="status" aria-live="polite">${escapeText(status)}</p></header>`;
+<p class="status" role="status" aria-live="polite">${escapeText(status)}</p>${actions}</header>`;
 }

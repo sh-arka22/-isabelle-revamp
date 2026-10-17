@@ -24,9 +24,10 @@ export function parseSymbolTable(source: string): Record<string, string> {
   return result;
 }
 
-export async function loadSymbols(executable: string): Promise<{ path: string; count: number }> {
-  const { stdout } = await promisify(execFile)(executable, ['getenv', '-b', 'ISABELLE_HOME'], { timeout: 15000 });
-  const path = join(stdout.trim(), 'etc/symbols');
+// Pass the ISABELLE_HOME already fetched at activation to avoid a second getenv.
+export async function loadSymbols(executable: string, isabelleHome?: string): Promise<{ path: string; count: number }> {
+  const home = isabelleHome ?? (await promisify(execFile)(executable, ['getenv', '-b', 'ISABELLE_HOME'], { timeout: 15000 })).stdout.trim();
+  const path = join(home, 'etc/symbols');
   const loaded = parseSymbolTable(await readFile(path, 'utf8'));
   if (!Object.keys(loaded).length) throw new Error('No Unicode assignments in ' + path);
   symbols = loaded;

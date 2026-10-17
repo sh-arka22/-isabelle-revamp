@@ -114,6 +114,48 @@ streaming, Stop, missing-tool help, webview behavior and earlier regressions.
 requests with your configured account/model, temporarily editing and restoring
 `Demo.thy`. Ask uses only the installed Claude Code CLI and the seven MCP tools.
 
+## Quick wins after Alex's first hands-on test
+
+- **Goals beside the editor.** Opening a theory now opens the **Isabelle Goals**
+  panel in a column to the right, like Lean's InfoView, without taking focus.
+  It shows the same header, goal, diagnostics and Ask transcript as the Explorer
+  view; both follow the cursor together. `isabelleRevamp.goalsPanel` chooses
+  `beside` (default), `sidebar` or `off`; **Isabelle: Open Goals Beside Editor**
+  opens the panel at any time.
+- **Restart the language server.** Run **Isabelle: Restart Language Server**,
+  click the **Isabelle: ready / checking… / stopped** status bar item, or use
+  **↻ Restart** in the goals header. The goal at the cursor returns once the
+  new server has checked the theory.
+- **Hover.** Hovering a constant, type or operator shows Isabelle's tooltip
+  (`constant "NthRoot.sqrt"` and `:: real ⇒ real`) as an Isabelle code block,
+  with symbols decoded. Hovering a `value`, `thm` or `term` command shows its
+  output; hovering `sorry` shows the admitted goal.
+- **Locked library files.** A file under `ISABELLE_HOME` or `ISABELLE_HOME_USER`
+  (HOL, HOL-Analysis, ML sources, AFP components) becomes read-only for the
+  session when Ctrl-click or Go to Definition opens it, so a stray keystroke
+  cannot change the distribution. Turn this off with `isabelleRevamp.lockLibrary`.
+  For a permanent lock that survives reloads, add the installation to VS Code's
+  own setting instead, for example:
+
+  ```json
+  "files.readonlyInclude": {
+    "**/Isabelle2025-2/**": true,
+    "**/.isabelle/**": true
+  }
+  ```
+
+- **Colours.** Inner syntax in double quotes is no longer a pink string: names,
+  operators, numerals, type variables and `::` each get their own scope, goal
+  and definition commands are `storage.type`, declared names are
+  `entity.name.function`, proof commands are `keyword.control.proof`, proof
+  methods are `support.function.method`, `sorry`/`oops` are
+  `keyword.other.unfinished`, and `text ‹…›` reads as documentation. The
+  built-in Dark+, Light+ and high-contrast themes pick these up directly;
+  `editor.tokenColorCustomizations` can refine any scope.
+
+`bash scripts/check_quickwins.sh` runs the grammar, the pure unit checks and the
+live panel, hover, locking and restart checks in stock VS Code with Isabelle.
+
 ## Run the goal probe
 
 ```sh

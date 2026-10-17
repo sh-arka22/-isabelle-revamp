@@ -12,7 +12,7 @@ exports.checkAskView = async function () {
     addEventListener(name, callback) { this.events[name] = callback; }
     focus() { this.focused = true; }
   }
-  const elements = Object.fromEntries(['prompt', 'send', 'stop', 'transcript', 'ask-status', 'goal', 'errors', 'h1', '.status'].map(name => [name, new Element()]));
+  const elements = Object.fromEntries(['prompt', 'send', 'stop', 'transcript', 'ask-status', 'goal', 'errors', 'restart', 'h1', '.status'].map(name => [name, new Element()]));
   let receive, saved = { draft: 'unsent draft' };
   const messages = [];
   vm.runInNewContext(html.match(/<script nonce="asknonce">([\s\S]+)<\/script>/)[1], {
@@ -42,11 +42,13 @@ exports.checkAskView = async function () {
   receive({ data: { type: 'askState', state: { active: true, entries: [{ id: 1, kind: 'assistant', text: 'streaming' }] } } });
   assert.equal(elements.transcript.children[0], node);
   elements.stop.events.click(); assert.equal(messages.at(-1).type, 'stop');
+  elements.restart.events.click(); assert.equal(messages.at(-1).type, 'restart');
   receive({ data: { type: 'askState', state: { active: false, entries: [{ id: 1, kind: 'assistant', text: 'done' }] } } });
   assert(!elements.prompt.disabled && elements.stop.disabled && elements.prompt.focused);
   let inbound, dispose; const posted = [];
   const view = new GoalsView(); let asked, stopped = false;
-  view.onAsk = text => { asked = text; }; view.onStop = () => { stopped = true; };
+  let restarted = false;
+  view.onAsk = text => { asked = text; }; view.onStop = () => { stopped = true; }; view.onRestart = () => { restarted = true; };
   view.focusAsk();
   const fake = { webview: { onDidReceiveMessage(fn) { inbound = fn; return { dispose() {} }; },
     postMessage(value) { posted.push(value); return Promise.resolve(true); } }, onDidDispose(fn) { dispose = fn; } };
@@ -55,8 +57,8 @@ exports.checkAskView = async function () {
   inbound({ type: 'ready' });
   assert(posted.some(m => m.type === 'focus'));
   assert(posted.some(m => m.type === 'askState' && m.state.entries[0].text === 'earlier'));
-  inbound({ type: 'ask', text: 'prove this' }); inbound({ type: 'stop' });
-  assert.equal(asked, 'prove this'); assert(stopped);
+  inbound({ type: 'ask', text: 'prove this' }); inbound({ type: 'stop' }); inbound({ type: 'restart' });
+  assert.equal(asked, 'prove this'); assert(stopped); assert(restarted);
   view.update({ ...state, text: 'updated' });
   assert.equal(fake.webview.html, initialHtml, 'Goal updates must not reload the webview');
   dispose(); view.resolveWebviewView(fake); inbound({ type: 'ready' });

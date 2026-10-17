@@ -20,10 +20,35 @@ exports.checkHighlighting = async function (app) {
     const grammar = await registry.loadGrammar(contribution.scopeName);
     const tokenize = (line, state = textmate.INITIAL) => grammar.tokenizeLine(line, state);
     const has = (result, scope) => result.tokens.some(token => token.scopes.includes(scope));
-    const keywords = 'theory imports begin end lemma theorem proof qed by have show from then hence thus obtain assume fix using unfolding also finally sorry oops text where and'.split(' ');
-    for (const word of keywords) assert(has(tokenize(word), 'keyword.control.isabelle'), word);
-    for (const name of ["theory'", 'proof_lemma', 'Some.proof', "'theory", 'αproof', 'proofβ']) {
-      assert(!has(tokenize(name), 'keyword.control.isabelle'), 'Identifier mistaken for keyword: ' + name);
+    const scopesOf = (line, word, state = textmate.INITIAL) => {
+      const column = line.indexOf(word);
+      const token = tokenize(line, state).tokens.find(item => item.startIndex <= column && item.endIndex >= column + word.length);
+      assert(token, `No token ${word} in ${line}`);
+      return token.scopes;
+    };
+    const keywordScope = scopes => scopes.some(scope => /^(keyword|storage\.type|support\.function|entity\.name)/.test(scope));
+    const classes = {
+      'keyword.other.structure.isabelle': 'theory imports begin end',
+      'storage.type.isabelle': 'lemma theorem corollary proposition definition abbreviation fun function primrec datatype inductive locale class instantiation type_synonym typedef record declare lemmas axiomatization',
+      'keyword.control.proof.isabelle': 'proof qed have show obtain assume fix from then hence thus using unfolding also finally next case with note let moreover ultimately by apply done .. .',
+      'keyword.other.unfinished.isabelle': 'sorry oops',
+      'keyword.other.document.isabelle': 'text section subsection',
+      'keyword.other.quasi.isabelle': 'where and assumes shows',
+    };
+    let keywords = [];
+    for (const [scope, words] of Object.entries(classes)) {
+      for (const word of words.split(' ')) assert(has(tokenize(word), scope), `${word} should be ${scope}`);
+      keywords = keywords.concat(words.split(' '));
+    }
+    const methods = 'simp auto blast metis force fastforce arith linarith rule induct induction cases simp_all clarsimp clarify intro elim presburger smt meson unfold subst insert standard this assumption -'.split(' ');
+    for (const method of methods) {
+      assert(scopesOf('by ' + method, method).includes('support.function.method.isabelle'), method);
+      assert(scopesOf('apply (' + method + ')', method).includes('support.function.method.isabelle'), method);
+      assert(scopesOf('proof ' + method, method).includes('support.function.method.isabelle'), method);
+    }
+    assert(!keywordScope(scopesOf('using simp this by blast', 'simp')), 'A fact named like a method stays plain outside method position');
+    for (const name of ["theory'", 'proof_lemma', 'Some.proof', "'theory", 'αproof', 'proofβ', 'standby']) {
+      assert(!tokenize(name).tokens.some(token => keywordScope(token.scopes)), 'Identifier mistaken for keyword: ' + name);
     }
     for (const symbol of ['\\<notin>', '\\<rat>', '\\<forall>', '\\<Rightarrow>', '\\<^sub>']) {
       for (const line of [symbol, '"' + symbol + '"']) {
@@ -34,16 +59,35 @@ exports.checkHighlighting = async function (app) {
     assert(has(tokenize('ℚ'), 'constant.language.isabelle'));
     for (const line of ['"show theorem"', String.raw`"escaped \" proof"`,
       '(* proof (* nested *) show *)', '‹show ‹theorem› qed›',
-      String.raw`\<open>show \<open>theorem\<close> qed\<close>`]) {
-      assert(!has(tokenize(line), 'keyword.control.isabelle'), line);
+      String.raw`\<open>show \<open>theorem\<close> qed\<close>`, 'text ‹show theorem›', 'text "qed by simp"']) {
+      assert(!tokenize(line).tokens.some(token => token.scopes.some(scope => /^keyword\.(control|other\.(structure|unfinished))/.test(scope))), line);
     }
+    // Alex's sanity line: inner syntax is mathematics, never a string.
+    const lemma = 'lemma foo: "x + 0 = (x::nat)" by simp';
+    assert(scopesOf(lemma, 'lemma').includes('storage.type.isabelle'));
+    assert(scopesOf(lemma, 'foo').includes('entity.name.function.isabelle'));
+    assert(scopesOf(lemma, 'by').includes('keyword.control.proof.isabelle'));
+    assert(scopesOf(lemma, 'simp').includes('support.function.method.isabelle'));
+    const inner = tokenize(lemma).tokens.filter(token => token.scopes.includes('meta.inner-syntax.isabelle'));
+    assert(inner.length > 4 && inner.every(token => !token.scopes.some(scope => scope.startsWith('string'))), 'inner syntax carries no string scope');
+    assert(scopesOf(lemma, 'x').includes('variable.other.isabelle'));
+    assert(scopesOf(lemma, '+').includes('keyword.operator.isabelle'));
+    assert(scopesOf(lemma, '0').includes('constant.numeric.isabelle'));
+    assert(scopesOf(lemma, '::').includes('keyword.operator.type.isabelle'));
+    assert(scopesOf('datatype \'a tree = Leaf', 'tree').includes('entity.name.function.isabelle'));
+    assert(scopesOf('"\'a list"', "'a").includes('storage.type.variable.isabelle'));
+    assert(scopesOf('"sqrt (2::real) \\<notin> \\<rat>"', '\\<notin>').includes('constant.character.escape.isabelle'));
+    assert(scopesOf('text \\<open>Prose here.\\<close>', 'Prose here.').includes('comment.block.documentation.isabelle'));
+    assert(scopesOf('lemma foo [simp]: "x"', 'foo').includes('entity.name.function.isabelle'));
+    assert(has(tokenize('‹plain cartouche›'), 'string.quoted.other.isabelle'));
+    assert(!has(tokenize('text ‹prose›'), 'string.quoted.other.isabelle'));
     // Multi-line contexts must resume the outer grammar at their closing token.
     for (const [opening, closing] of [['(* nested (*', '*) *)'], ['‹‹', '››'],
-      [String.raw`\<open>\<open>`, String.raw`\<close>\<close>`], ['"', '"']]) {
+      [String.raw`\<open>\<open>`, String.raw`\<close>\<close>`], ['"', '"'], ['text ‹', '›'], ['text \\<open>', '\\<close>']]) {
       let state = tokenize(opening).ruleStack;
-      assert(!has(tokenize('show', state), 'keyword.control.isabelle'));
+      assert(!has(tokenize('show', state), 'keyword.control.proof.isabelle'), opening);
       state = tokenize(closing, state).ruleStack;
-      assert(has(tokenize('show', state), 'keyword.control.isabelle'));
+      assert(has(tokenize('show', state), 'keyword.control.proof.isabelle'), closing);
     }
     let state = textmate.INITIAL;
     let commands = 0;
@@ -53,10 +97,11 @@ exports.checkHighlighting = async function (app) {
       state = result.ruleStack;
       const firstWord = /^\s*([a-z]+)/.exec(line)?.[1];
       if (keywords.includes(firstWord)) {
-        assert(has(result, 'keyword.control.isabelle'), line);
+        assert(result.tokens.some(token => line.slice(token.startIndex, token.endIndex) === firstWord && keywordScope(token.scopes)), line);
         commands++;
       }
-      if (line.trimStart().startsWith('text ')) assert(has(result, 'string.quoted.other.isabelle'), line);
+      if (line.trimStart().startsWith('text ')) assert(has(result, 'comment.block.documentation.isabelle'), line);
+      if (/^\s+by /.test(line)) assert(has(result, 'support.function.method.isabelle'), line);
     }
     assert(commands > 30);
     assert.equal(state.depth, textmate.INITIAL.depth, 'Highlighting leaked past the final end');
@@ -70,11 +115,21 @@ exports.checkHighlighting = async function (app) {
     for (const name of ['dark_plus', 'light_plus', 'hc_black', 'hc_light']) {
       registry.setTheme(theme(path.join(app, 'extensions/theme-defaults/themes/' + name + '.json')));
       // TextMate's encoded token foreground occupies bits 15–23. Compare the
-      // colour, not token-type bits (which alone distinguish strings).
-      const style = word => (grammar.tokenizeLine2(word, textmate.INITIAL).tokens[1] & 16744448) >>> 15;
-      assert.notEqual(style('theorem'), style('sqrt2_irrational'), name + ': keywords need a distinct style');
-      assert.notEqual(style('"a string"'), style('sqrt2_irrational'), name + ': strings need a distinct style');
+      // colour of the token at a column, not token-type bits.
+      const style = (line, column = 0) => {
+        const tokens = grammar.tokenizeLine2(line, textmate.INITIAL).tokens;
+        let metadata = tokens[1];
+        for (let i = 0; i < tokens.length; i += 2) if (tokens[i] <= column) metadata = tokens[i + 1];
+        return (metadata & 16744448) >>> 15;
+      };
+      const plain = style('sqrt2_irrational');
+      assert.notEqual(style('theorem'), plain, name + ': keywords need a distinct style');
+      assert.notEqual(style('lemma foo:', 6), style('lemma foo:'), name + ': the declared name differs from its command');
+      assert.notEqual(style('"x"', 1), plain, name + ': inner-syntax identifiers differ from plain text');
+      assert.notEqual(style('by simp', 3), style('by simp'), name + ': methods differ from proof commands');
+      assert.notEqual(style('text ‹prose›', 6), plain, name + ': prose reads as documentation');
+      assert.notEqual(style('(* comment *)', 3), plain, name + ': comments are distinct');
     }
-    console.log(`PASS: VS Code TextMate grammar, ${keywords.length} keywords, ${commands} demo command lines, symbols, contexts, and four built-in themes`);
+    console.log(`PASS: VS Code TextMate grammar, ${keywords.length} keywords, ${methods.length} methods, ${commands} demo command lines, inner syntax, prose, contexts, and four built-in themes`);
   } finally { registry.dispose(); }
 };
