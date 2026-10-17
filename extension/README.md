@@ -188,6 +188,41 @@ and hover text arrive in Unicode; the client conversion remains as a fallback.
 completion, the rewrite, the shortcuts, scripts, the converter and the session
 abbreviations.
 
+## Markup colours, outline and theorem marks
+
+Once Isabelle has checked a command, the editor shows the server's own markup
+as jEdit does: free, bound and type variables, keywords, numerals and comments
+take Isabelle's colours where the grammar had only guessed (setting
+`isabelleRevamp.decorations.semanticColours`), commands still being checked are
+shaded (`processingBackground`), a failed or admitted command keeps its red
+shade, and a command with output (`value`, `thm`, `try0`, a warning) gets the
+dotted underline from jEdit. The overview ruler shows unprocessed, running,
+error and warning lines on the right. The colours are the official light and
+dark defaults, credited in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+The **Outline** view and breadcrumbs list theorems, lemmas, definitions,
+datatypes, locales and the other declarations, nested under `section`
+headings and `locale … begin … end` blocks; `Ctrl+Shift+O` jumps between them
+and `Ctrl+T` searches every `.thy` file in the workspace. Each entry folds to
+the line before the next one, and `proof … qed` blocks fold as well. The
+outline reads the source only: a `lemma` mentioned inside a `text ‹…›`
+cartouche or a comment is never an entry.
+
+Every theorem carries a gutter mark that follows the current buffer: a
+double tick once it is proved, an amber warning sign for `sorry` or `oops`, a
+red cross on an error and a grey dotted circle while Isabelle is still
+checking or has not confirmed this version yet (`theoremMarks`). Marks appear
+after the cursor has visited the theory once, because completion is only
+known for a confirmed document version.
+
+```sh
+bash scripts/check_decorations.sh
+```
+
+runs the pure outline/status checks (`node extension/test/unit_outline.cjs`)
+and the live host: proved, admitted and failed versions of `Sqrt2.thy`,
+document symbols, folding, workspace symbols and painted markup counts.
+
 ## Run the goal probe
 
 ```sh

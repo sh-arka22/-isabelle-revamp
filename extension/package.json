@@ -59,6 +59,18 @@
           "type": "boolean", "default": true,
           "description": "Rewrite ASCII input as you type, outside comments: \\name followed by a terminator becomes \\<name> when name is exactly a symbol; << at the start of a token becomes \\<open>; >> becomes \\<close> after an unclosed \\<open> on the same line or at the start of a token outside a quoted string. The file stays ASCII."
         },
+        "isabelleRevamp.decorations.semanticColours": {
+          "type": "boolean", "default": true,
+          "description": "Colour free, bound and type variables, keywords, numerals and comments with Isabelle's own markup colours, as jEdit does, wherever the server has checked the text. The grammar colours the rest."
+        },
+        "isabelleRevamp.decorations.processingBackground": {
+          "type": "boolean", "default": true,
+          "description": "Shade the commands Isabelle has not yet checked or is still running. Failed and admitted commands keep their red shade."
+        },
+        "isabelleRevamp.decorations.theoremMarks": {
+          "type": "boolean", "default": true,
+          "description": "Mark every theorem in the gutter: a double tick once proved, a warning sign when admitted with sorry or oops, a cross on an error, a dotted circle while checking."
+        },
         "isabelleRevamp.executable": {
           "type": "string",
           "default": "isabelle",

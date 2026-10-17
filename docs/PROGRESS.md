@@ -480,3 +480,52 @@
   Details in [PROTOCOL_NOTES.md](PROTOCOL_NOTES.md).
 - **Next:** visual check of the raised scripts in the development host; the
   sidebar's `⇧x` rendering belongs to the goals work.
+
+## 2026-10-17 — Alex's items 9, 10 and 18: markup decorations, outline, theorem marks
+
+- **Changed:** `extension/src/decorations.ts` paints the `PIDE/decoration`
+  ranges that `Goals` already stores: jEdit's dotted underline under commands
+  with output (`dotted_writeln/information/warning`), Isabelle's own text
+  colours for free, bound, skolem and type variables, keywords, numerals and
+  comments (`isabelleRevamp.decorations.semanticColours`), a shade on
+  unprocessed, running and cancelled commands (`processingBackground`), the
+  red shade on bad commands, and overview-ruler lanes for unprocessed, running,
+  error and warning lines. The colours are the official light/dark defaults in
+  `palette.ts`. `Goals` gained `onDidDecorate(uri)` and `forget(uri)`; paints
+  survive editor switches and a closed document's markup is dropped.
+  `outlineModel.ts` is a pure lexical outline on `isarTokens`: headings nest,
+  `locale`/`class`/`context`/`instantiation` blocks contain their items, every
+  declaration folds to the line before the next one, `proof … qed` and
+  multi-line cartouches fold too; `outline.ts` registers document symbols
+  (Outline, breadcrumbs, `Ctrl+Shift+O`), folding and workspace symbols
+  (`Ctrl+T`) over every `.thy` in the workspace without opening the documents.
+  `theoremStatus.ts` classifies each goal command from current-version facts
+  (error > `sorry`/`oops` > busy > proved; an unconfirmed version is always
+  "checking") and `theoremGutter.ts` draws SVG gutter marks and overview
+  colours, debounced 150 ms. The activation API exposes `getTheoremStatuses()`
+  and `getEditorDecorations()`.
+- **Passed:** `node extension/test/unit_outline.cjs` (Sqrt2 outline, a tricky
+  theory with prose, nested comments, blocks, anonymous goals and `oops`, the
+  classifier's precedence and overlap edges, the icons).
+  `bash scripts/check_decorations.sh` in headless stock VS Code with the real
+  server: document symbols and folds for `Sqrt2.thy`; the completed theorem
+  `proved`, the M3 placeholder `unfinished` with one bad range, `by (rule TrueI)`
+  `error` with an overview-ruler error; a `section`/`locale` fixture nested
+  correctly with `text_free`, `text_bound` and `dotted_writeln` ranges painted;
+  workspace symbols found `sqrt2_irrational` in `examples/`; decorations
+  returned after closing and reopening the editor. `check_m3.sh` and
+  `check_m4.sh` still pass.
+- **Discovered:** variables introduced by `obtain` are marked `skolem`, not
+  `free`: the completed `Sqrt2.thy` paints 11 `text_skolem` ranges and no
+  `text_free`; a locale's `fixes x` is `free` and a quantified `y` is `bound`.
+  The dotted underline marks the keyword of a command with a message, as in
+  jEdit: in `Sqrt2.thy` all 17 `dotted_writeln` ranges are the `by` and `qed`
+  tokens, because a terminal proof step reports the fact it proved, and this
+  does not depend on `editor_output_state`. The server sends the whole file's
+  markup on every delta, so painting is coalesced for 30 ms and can trail the
+  sidebar's verdict by one burst; the live test waits for both.
+  Details in [PROTOCOL_NOTES.md](PROTOCOL_NOTES.md).
+- **Next:** hover text for the dotted ranges (the server's `hover_message` is
+  not stored yet), viewport slicing for very large theories, and the
+  outline/marks for theories never visited by the cursor (their completion is
+  unknown until a goal query confirms the version).

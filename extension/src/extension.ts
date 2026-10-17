@@ -9,6 +9,9 @@ import { Bridge } from './bridge';
 import { BridgeTools } from './bridgeTools';
 import { hoverCode } from './hoverText';
 import { isabelleRoots, isLibraryFile, libraryRoots } from './library';
+import { Decorations } from './decorations';
+import { registerOutline } from './outline';
+import { TheoremGutter } from './theoremGutter';
 import { loadSymbols, unicodeSymbols } from './symbols';
 import { PrettySymbols } from './prettySymbols';
 import { ServerStatus } from './serverStatus';
@@ -150,7 +153,9 @@ export async function activate(context: ExtensionContext) {
   client = startClient();
   goals = new Goals(client, view);
   const typing = new SymbolTyping(client);
-  context.subscriptions.push(typing);
+  const decorations = new Decorations(goals);
+  const theoremGutter = new TheoremGutter(goals);
+  context.subscriptions.push(typing, decorations, theoremGutter, ...registerOutline());
   const swarm = new Swarm(goals);
   context.subscriptions.push(swarm, status,
     window.registerWebviewViewProvider('isabelleRevamp.swarm', swarm.view),
@@ -225,6 +230,8 @@ export async function activate(context: ExtensionContext) {
     getPrettySymbols: () => window.activeTextEditor ? prettySymbols.snapshot(window.activeTextEditor) : [],
     getSessionAbbrevs: () => typing.sessionAbbrevs,
     getAskState: () => ask!.snapshot(), sendAsk, stopAsk: () => ask?.stop(),
+    getEditorDecorations: () => decorations.snapshot(window.activeTextEditor),
+    getTheoremStatuses: () => theoremGutter.statuses(window.activeTextEditor),
     selectSwarmStep: (uri: string, version: number, id: string) => swarm.select(uri, version, id),
     getLockedDocuments: () => [...locked], getLibraryRoots: () => [...roots],
     getGoalPanelState: () => ({ open: panel.open, autoOpened, attached: view.attached }),
