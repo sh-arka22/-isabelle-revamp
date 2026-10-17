@@ -104,7 +104,7 @@ vscode/
 
 ### Behaviour
 
-Card layout (PLAN §6.3), Markdown:
+Card layout (PLAN §6.3), Markdown — the line number is illustrative:
 
 ````
 ```isabelle
@@ -130,6 +130,29 @@ Rendered in a dark theme it looks like this (mock; the real card takes colours a
 - Indexes load once, reload on file change (`FileSystemWatcher` with a `RelativePattern` on the file's directory, so paths outside the workspace work) and on configuration change. Bad JSONL lines are skipped and counted in the "Isabelle Revamp" output channel.
 - `revamp.hover.logTiming` logs `word → record via definition|name|isar-ref in N ms` for the p95 measurement.
 
+#### Lookup order (D7) — never the prover, never `executeHoverProvider`
+
+```mermaid
+sequenceDiagram
+  participant U as Hover at cursor
+  participant P as RevampHoverProvider
+  participant D as vscode.executeDefinitionProvider
+  participant I as DocsIndex (in memory)
+  participant R as Isar-Ref index
+  U->>P: provideHover(document, position)
+  P->>D: definition at position — budget 100 ms (Promise.race)
+  alt location arrives within budget
+    D-->>P: file:line
+    P->>I: lookupByLocation(file, line ± 2)
+  else timeout or no provider
+    P->>I: lookupByName(word) — same theory first, then short name
+  end
+  opt still no record
+    P->>R: lookupByName(word) — command · method · attribute
+  end
+  P-->>U: Hover(renderCard(record)) — or nothing
+```
+
 ### Acceptance (PLAN §13 #9, made checkable)
 
 - [ ] Activates on `onLanguage:isabelle` with yfprojects installed and without it (D1); no exception in the extension host log.
@@ -151,7 +174,7 @@ Rendered in a dark theme it looks like this (mock; the real card takes colours a
 - Command **"Isabelle Revamp: Show ProofMap"** opens one `WebviewPanel` (`retainContextWhenHidden`), CSP with a nonce for scripts; `style-src` needs `'unsafe-inline'` because Cytoscape sets inline styles on its canvases. **Cytoscape + dagre are bundled by esbuild; no CDN** (PLAN §1 item 6).
 - Reads `dag.json` (C1) from `revamp.proofMap.dagPath` (first workspace folder that has it); tolerant parser drops malformed nodes and dangling edges and reports them in the output channel and in the panel footer. Re-renders when the file changes (so `revamp map export --watch` from #6 turns a node green on save).
 - Nodes: label = fact name (`Session.Theory.fact` → `fact`); theorems as ellipses, definitions as boxes; tooltip on hover with the decoded statement and the `nl` text; **click → `revamp.openLocation(file, line)`**.
-- Legend (PLAN §6.2, leanblueprint colours): missing = blue border · defined = box · sorry = red border · proved = green fill · fully_proved = dark-green fill · oracle = solid red. Edges: `uses` solid, `uses_def` dotted, `declared` dashed.
+- Legend (PLAN §6.2, leanblueprint colours), all colours from the active theme: missing = blue border · defined = box · sorry = red border · proved = green fill · fully_proved = dark-green fill · oracle = solid red. Edges: `uses` solid · `uses_def` dotted · `declared` dashed.
 
   ![ProofMap status legend](assets/proofmap-legend.svg)
 - Colours come from the theme: the webview reads the computed `--vscode-charts-*`, `--vscode-editor-*`, `--vscode-widget-border` values (Cytoscape cannot read CSS variables itself) and re-applies the style when the body's theme class changes.
