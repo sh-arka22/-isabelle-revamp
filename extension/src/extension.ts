@@ -12,6 +12,7 @@ import { isabelleRoots, isLibraryFile, libraryRoots } from './library';
 import { loadSymbols, unicodeSymbols } from './symbols';
 import { PrettySymbols } from './prettySymbols';
 import { ServerStatus } from './serverStatus';
+import { SymbolTyping } from './symbolTyping';
 import { Swarm } from './swarm';
 import { Ask } from './ask';
 
@@ -106,6 +107,8 @@ export async function activate(context: ExtensionContext) {
     '-o', 'vscode_html_output=true',
     '-o', 'editor_output_state=true',
     '-o', 'vscode_pide_extensions=true',
+    // Diagnostics and hover text arrive decoded; edits (completions) stay ASCII.
+    '-o', 'vscode_unicode_symbols_output=true',
     '-o', 'vscode_unicode_symbols_edits=false',
   ];
   const server: ServerOptions = { command: executable, args };
@@ -135,6 +138,7 @@ export async function activate(context: ExtensionContext) {
       if (event.newState === State.Running) {
         status.set('ready');
         goals?.ready(window.activeTextEditor ?? visibleTheory());
+        typing.requestAbbrevs();
         refreshStatus();
       } else {
         status.set(event.newState === State.Starting ? 'starting' : 'stopped');
@@ -145,6 +149,8 @@ export async function activate(context: ExtensionContext) {
   };
   client = startClient();
   goals = new Goals(client, view);
+  const typing = new SymbolTyping(client);
+  context.subscriptions.push(typing);
   const swarm = new Swarm(goals);
   context.subscriptions.push(swarm, status,
     window.registerWebviewViewProvider('isabelleRevamp.swarm', swarm.view),
@@ -157,6 +163,7 @@ export async function activate(context: ExtensionContext) {
     try { await client?.dispose(); } catch (error) { output.warn(`Stopping the old server: ${String(error)}`); }
     client = startClient();
     goals?.rebind(client);
+    typing.rebind(client);
     try {
       await client.start();
       output.info('Isabelle language server restarted (HOL).');
@@ -216,6 +223,7 @@ export async function activate(context: ExtensionContext) {
   // The integration check reads the same model that the webview renders.
   return { getGoalState: () => view.snapshot(), getSwarmState: () => swarm.view.snapshot(),
     getPrettySymbols: () => window.activeTextEditor ? prettySymbols.snapshot(window.activeTextEditor) : [],
+    getSessionAbbrevs: () => typing.sessionAbbrevs,
     getAskState: () => ask!.snapshot(), sendAsk, stopAsk: () => ask?.stop(),
     selectSwarmStep: (uri: string, version: number, id: string) => swarm.select(uri, version, id),
     getLockedDocuments: () => [...locked], getLibraryRoots: () => [...roots],

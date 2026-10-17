@@ -156,6 +156,38 @@ requests with your configured account/model, temporarily editing and restoring
 `bash scripts/check_quickwins.sh` runs the grammar, the pure unit checks and the
 live panel, hover, locking and restart checks in stock VS Code with Isabelle.
 
+## Symbols, scripts and cartouches
+
+The file stays ASCII; only the display changes. In the editor, `\<^sup>2` shows
+as `²`, `\<^sub>i` as `ᵢ`, and an argument without a Unicode glyph (`\<^sup>Q`,
+`\<^bsup>n+1\<^esup>`, `\<^bold>x`) is drawn raised, lowered or bold with its
+control symbol hidden. Put the caret inside a range to see its source.
+
+Typing: after `\` the completion list offers every symbol of the installed
+table (`\forall` → `\<forall>`, detail `∀`), its abbreviations (`!`, `==>`, `<<`),
+the session's own abbreviations from `PIDE/abbrevs_request` (`?<`), and `\open`,
+a snippet that places the caret between `\<open>` and `\<close>`. With
+**Isabelle Revamp: Symbol Rewrite** on (the default), `\forall` followed by a
+space, bracket or quote becomes `\<forall>` as you type, as in Lean; for
+`\^sub`, `\^sup` and `\^bold` the argument itself ends the name (`x\^sub1` →
+`x\<^sub>1`). jEdit's shortcuts work too: `<<` at the start of a token becomes
+`\<open>`, and `>>` becomes `\<close>` when a cartouche is still open on that
+line or when it starts a token outside a quoted string, so `"x >> 2"` is left
+alone. Nothing is rewritten inside comments. **Isabelle: Insert Symbol…** picks
+from the table by name, abbreviation or glyph and inserts the ASCII escape.
+
+**Isabelle: Convert Quotes to Cartouches** rewrites outer-syntax `"…"` arguments
+of the selection (or the whole theory) to `\<open>…\<close>`, decoding `\"`,
+`\\` and `\ddd`; the theory header, comments, existing cartouches and strings
+with unbalanced cartouche delimiters are left as they are. Review the diff: a
+few commands only accept quoted strings.
+
+The server now runs with `vscode_unicode_symbols_output=true`, so diagnostics
+and hover text arrive in Unicode; the client conversion remains as a fallback.
+`bash scripts/check_symbols.sh` runs the unit checks and a live host check of
+completion, the rewrite, the shortcuts, scripts, the converter and the session
+abbreviations.
+
 ## Run the goal probe
 
 ```sh

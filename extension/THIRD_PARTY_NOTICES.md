@@ -15,6 +15,19 @@ custom symbol names are preserved. The control meanings were checked against
 `src/Pure/General/html.scala:154–179` and live server output. The license below
 also covers the copied symbol data.
 
+`src/symbols.ts` (control-symbol ranges for `\<^sup>`, `\<^sub>`, `\<^bold>`,
+`\<^bsup>…\<^esup>` and `\<^bsub>…\<^esub>`) and the script styles in
+`src/prettySymbols.ts` are ported from
+`Isabelle2025-2.app/src/Tools/VSCode/extension/src/script_decorations.ts`
+(author: Denis Paluca, TU Muenchen; BSD-3, the licence below). The ranges are
+computed on the ASCII source instead of decoded Unicode, and the raised or
+lowered argument is rendered with the same CSS as the original.
+
+`src/symbolInput.ts` ports the idea, not the code, of the rewrite on type from
+`abbrev.ts` in yfprojects' `vscode-isabelle` (BSD 3-Clause License, Copyright
+(c) 2026, yfprojects (github.com user) and collaborators): expand `\name` to the ASCII escape
+`\<name>` rather than to Unicode, once the typed name is complete.
+
 The distribution copyright notice is reproduced below. No Isabelle source files
 were modified.
 

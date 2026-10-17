@@ -23,6 +23,8 @@
     },
     "commands": [
       { "command": "isabelleRevamp.togglePrettySymbols", "title": "Isabelle: Toggle Pretty Symbols" },
+      { "command": "isabelleRevamp.insertSymbol", "title": "Isabelle: Insert Symbol…" },
+      { "command": "isabelleRevamp.convertQuotesToCartouches", "title": "Isabelle: Convert Quotes to Cartouches" },
       { "command": "isabelleRevamp.ask", "title": "Isabelle: Ask" },
       { "command": "isabelleRevamp.showGoals", "title": "Isabelle: Show Goals" },
       { "command": "isabelleRevamp.showSwarm", "title": "Isabelle: Show Swarm" },
@@ -52,6 +54,10 @@
         "isabelleRevamp.prettySymbols": {
           "type": "boolean", "default": true,
           "description": "Display ASCII Isabelle symbols as mathematics; reveal source at the cursor. Does not change the file or source coordinates."
+        },
+        "isabelleRevamp.symbolRewrite": {
+          "type": "boolean", "default": true,
+          "description": "Rewrite ASCII input as you type, outside comments: \\name followed by a terminator becomes \\<name> when name is exactly a symbol; << at the start of a token becomes \\<open>; >> becomes \\<close> after an unclosed \\<open> on the same line or at the start of a token outside a quoted string. The file stays ASCII."
         },
         "isabelleRevamp.executable": {
           "type": "string",
