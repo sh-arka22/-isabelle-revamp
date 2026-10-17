@@ -1169,7 +1169,7 @@ These are created as GitHub issues 1–20, in this order, right after commit 0 a
    - `doc_source` is correct for the fixture's three doc styles, including the ASCII marker with nested cartouches. The adjacency rule stops at headings. The statement cut list includes `\<proof>`.
    - `data/isar-ref.jsonl` has at least 150 entries. It is retinapeg's whole hover deliverable: ark's extension reads it, and retinapeg does not edit `vscode/`.
    - The Markdown conversion has unit tests.
-9. **VS Code companion: hover cards** (ark)
+9. **VS Code companion: hover cards** (ark) — implementation plan: `docs/plans/vscode-companion.md`
    - Activates on `onLanguage:isabelle` next to yfprojects, with no hard dependency on it.
    - Uses the §6.3 card layout and badge.
    - p95 ≤ 150 ms on `geometric_sums` (doc from preceding text), on `append_assoc` (no doc; statement, breadcrumb and link still shown) and on an Apéry lemma with a marker.
@@ -1177,7 +1177,7 @@ These are created as GitHub issues 1–20, in this order, right after commit 0 a
    - Adding a marker and saving updates the card.
    - A golden-card unit test passes; the PR has light and dark screenshots.
    - This PR adds the `vscode` CI job. `package.json` has `publisher` and `main: dist/extension.js`, with esbuild bundling `src/extension.ts` as well as the webview. `vsce package` runs without a prompt, and CI uploads the vsix. The contributions #10 and #17 need (commands, settings) are declared here up front.
-10. **ProofMap viewer** (ark; Alex signs off the look)
+10. **ProofMap viewer** (ark; Alex signs off the look) — implementation plan: `docs/plans/vscode-companion.md`
     - Command "Isabelle Revamp: Show ProofMap".
     - Cytoscape with the dagre layout, bundled by esbuild (no CDN). Colours come from `--vscode-*` theme variables, and the legend follows §6.2.
     - Clicking a node opens file:line; hovering shows the statement and, where present, the natural-language description.
