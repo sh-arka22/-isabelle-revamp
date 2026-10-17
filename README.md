@@ -31,6 +31,5 @@ Isabelle is excellent at the research and logic level. It integrates poorly with
 
 - [Prove2Me](https://prove2.me) (Lean) and [leanblueprint](https://github.com/PatrickMassot/leanblueprint) inspired ProofMap's dependency-graph workflow. We have no affiliation with either.
 - [PIDE MCP](https://github.com/kappelmann/isabelle-pide-mcp) (LGPL-3.0) is the base for Beam.
-- [Isabelle-MCP](https://github.com/xqyww123/Isabelle-MCP) (LGPL-2.1-or-later, Qiyuan Xu): a headless Isabelle MCP server, proposed as the agents' interface for evaluation and queries; see [docs/plans/isabelle-mcp.md](docs/plans/isabelle-mcp.md).
 - [vscode-isabelle by yfprojects](https://github.com/real-yfprojects/vscode-isabelle) (BSD-3-Clause) is the editor extension we build alongside.
 - Lean Beam's `runAt` inspired our `run_at` tool.
