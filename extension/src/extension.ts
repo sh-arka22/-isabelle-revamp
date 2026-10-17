@@ -8,6 +8,7 @@ import { Bridge } from './bridge';
 import { BridgeTools } from './bridgeTools';
 import { loadSymbols, unicodeSymbols } from './symbols';
 import { PrettySymbols } from './prettySymbols';
+import { SymbolTyping } from './symbolTyping';
 import { Swarm } from './swarm';
 import { Ask } from './ask';
 
@@ -64,6 +65,8 @@ export async function activate(context: ExtensionContext) {
     '-o', 'vscode_html_output=true',
     '-o', 'editor_output_state=true',
     '-o', 'vscode_pide_extensions=true',
+    // Diagnostics and hover text arrive decoded; edits (completions) stay ASCII.
+    '-o', 'vscode_unicode_symbols_output=true',
     '-o', 'vscode_unicode_symbols_edits=false',
   ];
   const server: ServerOptions = { command: executable, args };
@@ -82,6 +85,8 @@ export async function activate(context: ExtensionContext) {
     },
   });
   goals = new Goals(client, view);
+  const typing = new SymbolTyping(client);
+  context.subscriptions.push(typing);
   const swarm = new Swarm(goals);
   context.subscriptions.push(swarm,
     window.registerWebviewViewProvider('isabelleRevamp.swarm', swarm.view),
@@ -101,7 +106,7 @@ export async function activate(context: ExtensionContext) {
       if (event.document === window.activeTextEditor?.document) goals?.follow(window.activeTextEditor);
     }),
     client.onDidChangeState(event => {
-      if (event.newState === State.Running) goals?.ready(window.activeTextEditor ?? visibleTheory());
+      if (event.newState === State.Running) { goals?.ready(window.activeTextEditor ?? visibleTheory()); typing.requestAbbrevs(); }
       else goals?.unavailable();
     }));
 
@@ -130,6 +135,7 @@ export async function activate(context: ExtensionContext) {
   // The integration check reads the same model that the webview renders.
   return { getGoalState: () => view.snapshot(), getSwarmState: () => swarm.view.snapshot(),
     getPrettySymbols: () => window.activeTextEditor ? prettySymbols.snapshot(window.activeTextEditor) : [],
+    getSessionAbbrevs: () => typing.sessionAbbrevs,
     getAskState: () => ask!.snapshot(), sendAsk, stopAsk: () => ask?.stop(),
     selectSwarmStep: (uri: string, version: number, id: string) => swarm.select(uri, version, id) };
 }

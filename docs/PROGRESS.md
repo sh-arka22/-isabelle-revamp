@@ -401,3 +401,34 @@
 - **Would do differently:** enable formula completions at language registration
   time and separate source representation from display from the first editor
   milestone.
+
+## Alex items 6, 7, 11 — symbol input, scripts and cartouches
+
+- **Changed:** `\` completion over the installed symbol table (name, glyph and
+  `abbrev:` fields of `etc/symbols`) plus the session abbreviations requested
+  once with `PIDE/abbrevs_request`; a Lean-style rewrite on type
+  (`isabelleRevamp.symbolRewrite`, default on): `\name` + terminator →
+  `\<name>`, `<<` → `\<open>`, `>>` → `\<close>` under the documented rule;
+  **Isabelle: Insert Symbol…**; `\open` snippet with the caret inside; real
+  super/subscripts in the editor for `\<^sup>`, `\<^sub>`, `\<^bold>` and the
+  block forms, with glyphs where Unicode has them and raised/lowered source
+  otherwise; **Isabelle: Convert Quotes to Cartouches** (pure `cartouches.ts`);
+  the server option `vscode_unicode_symbols_output=true`. ASCII stays on disk:
+  every insertion is an escape, and session templates are encoded back from
+  the decoded Unicode the server sends.
+- **Passed:** `node extension/test/unit_symbols.cjs` (table and abbrev parsing,
+  candidates, context scan, rewrite rules, script ranges, converter) and
+  `scripts/check_symbols.sh` in headless stock VS Code with the real server:
+  completion items for `\forall`, `!`, `\open`; typed `\forall `, `\noteq `,
+  `x\^sub1`, `<<`, `words>>`, `"x >> 2"`; the setting off; the converter on a
+  fixture (whole document and selection); Insert Symbol; `PIDE/abbrevs_response`
+  with `?<` → `\<exists>\<^sub>\<le>\<^sub>1`; decoded diagnostics.
+  `check_m9a.sh` (which chains M3–M5) and `check_m3.sh` still pass; the server's
+  `\Sum` completion is accepted unchanged.
+- **Discovered:** the HTML goal output is independent of
+  `vscode_unicode_symbols_output`; the option only changes diagnostics, hover
+  and the log. `PIDE/abbrevs_response` carries decoded Unicode templates with
+  `\u0007` marking the caret, and pairs with an empty or identical replacement.
+  Details in [PROTOCOL_NOTES.md](PROTOCOL_NOTES.md).
+- **Next:** visual check of the raised scripts in the development host; the
+  sidebar's `⇧x` rendering belongs to the goals work.

@@ -620,3 +620,32 @@ at line 1, columns 7–11 returned a single completion with label/insertText
 `\<Sum>`, filterText `\Sum`, detail `\<Sum> (symbol "∑")`, and a text edit
 replacing exactly `[1,7,1,11]` with `\<Sum>`. The accepted document contains
 ASCII, not `∑`. The receipt is `.dev-host/m9a-completion.json`.
+
+## Symbols — Unicode output option and session abbreviations
+
+Observed live with `vscode_unicode_symbols_output=false` and `=true` (all other
+options as in `extension.ts`), on a theory with a failing `by (rule TrueI)`:
+
+- `textDocument/publishDiagnostics`: `false` gives
+  `Failed to apply initial proof method\<^here>:\ngoal (1 subgoal):\n 1. \<forall>x. x \<noteq> x + 1 \<longrightarrow> x\<^sup>2 = x * x`;
+  `true` gives `… method⌂:\n … 1. ∀x. x ≠ x + 1 ⟶ x⇧2 = x * x`.
+- `textDocument/hover`: `false` gives `:: real \<Rightarrow> real`, `true` gives
+  `:: real ⇒ real` (the first block, `constant "NthRoot.sqrt"`, is unchanged).
+- `PIDE/dynamic_output` and `PIDE/state_output` are identical in both modes:
+  `HTML.source` already decodes symbols and keeps `⇧2` as a control plus
+  character. Only `vscode_resources.output_text` (diagnostics, tooltips and the
+  log) reads the option; the HTML panel path bypasses it.
+- The client's `unicodeSymbols` is idempotent on decoded text, so it stays in
+  the diagnostics middleware as a fallback. The extension now passes
+  `-o vscode_unicode_symbols_output=true`; `vscode_unicode_symbols_edits=false`
+  keeps completion replacement text ASCII.
+
+`PIDE/abbrevs_request` is a notification without params. The reply
+`PIDE/abbrevs_response` is `{"abbrevs": [[from, to], ...]}` with the session's
+`Thy_Header.Abbrevs` in theory-header order, for example
+`["?<", "∃⇩≤⇩1"]`, `["^*", "⇧*"]`, `["(=", "⊆⇩m"]`, `["\\tag", "✐‹tag \u0007›"]`.
+The replacements are decoded Unicode; `\u0007` is Isabelle's caret marker
+(`Completion.caret_indicator`). Some pairs are no-ops (`["===>", "===>"]`) or
+removals (`["hence", ""]`, later redefined as `["hence", "then have"]`). The
+client encodes replacements back to `\<name>` escapes with the loaded table,
+turns the marker into a snippet tab stop, and drops the no-op and empty pairs.
