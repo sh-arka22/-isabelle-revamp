@@ -17,6 +17,7 @@ Isabelle is excellent at the research and logic level. It integrates poorly with
 
 | | Component | What it does | Status |
 |---|---|---|---|
+| 🧩 | **VS Code extension** (`extension/`) | Isabelle/HOL in stock VS Code with the unmodified `isabelle vscode_server`: Isar highlighting, pretty symbols, the **Isabelle Goals** sidebar, the **Swarm** proof board, **Ask Isabelle** (Claude Code) and a seven-tool MCP bridge. | 🟢 working (M1–M9) — [try it in five minutes](extension/README.md) · [demo](docs/DEMO.md) |
 | 🃏 | **Hover cards** | Lean-style Markdown cards in stock VS Code: statement, doc with its source, breadcrumb, `File.thy:N`. No new syntax. | 🟡 planned — [plan](docs/plans/vscode-companion.md) |
 | 🗺️ | **ProofMap** | A theorem dependency graph whose edges and statuses come from what the kernel recorded (`Thm_Deps`, `sorry` = the `skip_proof` oracle). Viewer inside VS Code. | 🟢 prototype on `proto/proofmap` · viewer [plan](docs/plans/vscode-companion.md) |
 | ⚡ | **Beam** | Speculative `run_at` / `find_theorems_at` agent tools over MCP: try 16 candidate proofs without touching the file. | 🟢 prototype on `proto/beam` |
@@ -30,8 +31,8 @@ Isabelle is excellent at the research and logic level. It integrates poorly with
 ```mermaid
 flowchart LR
   subgraph editor["Stock VS Code"]
-    yf["yfprojects.vscode-isabelle<br/>syntax · symbols · goal panel"]
-    rv["revamp companion (ours)<br/>hover cards · ProofMap viewer"]
+    yf["extension/ (ours)<br/>syntax · symbols · goals · swarm · ask"]
+    rv["planned inside extension/<br/>hover cards · ProofMap viewer"]
   end
 
   subgraph agent["Claude Code (one prover per agent)"]
@@ -60,6 +61,7 @@ Same kernel, same HOL, same Isar. Everything we add sits outside: an editor comp
 
 ## Start here
 
+- **[extension/README.md](extension/README.md)** — run the VS Code extension (F5) and the [five-step demo](docs/DEMO.md); [mcp/README.md](mcp/README.md) connects Claude Code or Codex to it.
 - **[PLAN.md](PLAN.md)** — system design, contracts, git workflow, CI, workstreams, the 24-hour timeline and the first issues.
 - **[docs/plans/](docs/plans)** — per-workstream plans awaiting approval: [VS Code companion (#9, #10)](docs/plans/vscode-companion.md), [Isabelle-MCP](docs/plans/isabelle-mcp.md).
 - **[AGENTS.md](AGENTS.md)** — the rules every human and agent working in this repo follows.
@@ -70,6 +72,7 @@ Same kernel, same HOL, same Isar. Everything we add sits outside: an editor comp
 |---|---|
 | **Alex Hyman** · [@hymanimy](https://github.com/hymanimy) | maths, Isabelle, design, pitch |
 | **ark** · [@sh-arka22](https://github.com/sh-arka22) | repo, CI, ProofMap and the editor |
+| **Leo Aarons-Ditson** | VS Code extension (M1–M9), MCP bridge, Ask Isabelle |
 | **retinapeg** · [@retinapeg](https://github.com/retinapeg) | agent endpoints, natural-language tools, onboarding |
 
 ## Ground rules

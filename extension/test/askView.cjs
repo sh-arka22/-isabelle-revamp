@@ -1,0 +1,60 @@
+const assert = require('node:assert/strict');
+const { goalsHtml, GoalsView } = require('../out/goalsView');
+const { mount } = require('./fakeDom.cjs');
+exports.checkAskView = async function () {
+  const state = { phase: 'ready', text: 'goal', errors: [], theory: 'Demo' };
+  const html = goalsHtml(state, 'asknonce');
+  assert(html.includes("script-src 'nonce-asknonce'"));
+  // The Ask section comes last, after the goal, facts and messages.
+  assert(html.indexOf('id="prompt"') > html.indexOf('<header>'));
+  assert(html.indexOf('id="prompt"') > html.indexOf('id="messages-section"'));
+  const page = mount(html, 'asknonce', { state: { draft: 'unsent draft' } });
+  const { document, posted, receive } = page;
+  const element = id => document.getElementById(id);
+  const prompt = element('prompt'), send = element('send'), stop = element('stop'), transcript = element('transcript');
+  assert.equal(prompt.value, 'unsent draft');
+  // The header's restart link reaches the extension as its own message.
+  element('restart').dispatch('click'); assert.equal(posted.at(-1).type, 'restart');
+  receive({ type: 'goal', goal: { theory: 'Demo', status: 'checking…', badge: 'checking', phase: 'checking', text: '', errors: '',
+    position: '', goalHtml: '', done: false, empty: false, factsHtml: '', factCount: 0, messagesHtml: '', messageCount: 0, showErrors: false } });
+  assert.equal(prompt.value, 'unsent draft');
+  assert.equal(element('goal').innerHTML, '');
+  const enter = shiftKey => ({ key: 'Enter', shiftKey });
+  prompt.dispatch('keydown', enter(true));
+  assert.equal(posted.filter(message => message.type === 'ask').length, 0, 'Shift+Enter must not send');
+  prompt.dispatch('keydown', { ...enter(false), isComposing: true });
+  assert.equal(posted.filter(message => message.type === 'ask').length, 0, 'IME composition must not send');
+  prompt.value = 'prove this';
+  prompt.dispatch('keydown', enter(false));
+  assert.equal(posted.at(-1).text, 'prove this');
+  assert(prompt.disabled && send.disabled && !stop.disabled);
+  assert.equal(page.state().draft, '');
+  prompt.value = 'accidental duplicate'; send.dispatch('click');
+  assert.equal(posted.filter(message => message.type === 'ask').length, 1);
+  receive({ type: 'askState', state: { active: true, entries: [{ id: 1, kind: 'assistant', text: '<script>safe</script>' }] } });
+  const node = transcript.children[0];
+  assert.equal(node.textContent, '<script>safe</script>');
+  receive({ type: 'askState', state: { active: true, entries: [{ id: 1, kind: 'assistant', text: 'streaming' }] } });
+  assert.equal(transcript.children[0], node);
+  stop.dispatch('click'); assert.equal(posted.at(-1).type, 'stop');
+  receive({ type: 'askState', state: { active: false, entries: [{ id: 1, kind: 'assistant', text: 'done' }] } });
+  assert(!prompt.disabled && stop.disabled && prompt.focused);
+  let inbound, dispose; const sent = [];
+  const view = new GoalsView(); let asked, stopped = false, restarted = false;
+  view.onAsk = text => { asked = text; }; view.onStop = () => { stopped = true; }; view.onRestart = () => { restarted = true; };
+  view.focusAsk();
+  const fake = { webview: { onDidReceiveMessage(fn) { inbound = fn; return { dispose() {} }; },
+    postMessage(value) { sent.push(value); return Promise.resolve(true); } }, onDidDispose(fn) { dispose = fn; } };
+  view.update(state); view.updateAsk({ active: false, entries: [{ id: 1, kind: 'user', text: 'earlier' }] });
+  view.resolveWebviewView(fake); const initialHtml = fake.webview.html;
+  inbound({ type: 'ready' });
+  assert(sent.some(m => m.type === 'focus'));
+  assert(sent.some(m => m.type === 'askState' && m.state.entries[0].text === 'earlier'));
+  inbound({ type: 'ask', text: 'prove this' }); inbound({ type: 'stop' }); inbound({ type: 'restart' });
+  assert.equal(asked, 'prove this'); assert(stopped); assert(restarted);
+  view.update({ ...state, text: 'updated' });
+  assert.equal(fake.webview.html, initialHtml, 'Goal updates must not reload the webview');
+  dispose(); view.resolveWebviewView(fake); inbound({ type: 'ready' });
+  assert(sent.findLast(message => message.type === 'askState').state.entries[0].text === 'earlier');
+  console.log('PASS: Ask webview Enter/newline/IME, disabled controls, Stop, focus command, retained draft/transcript, and escaped streamed text');
+};

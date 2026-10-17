@@ -1,0 +1,269 @@
+{
+  "name": "Isabelle",
+  "scopeName": "source.isabelle",
+  "patterns": [
+    {
+      "include": "#comments"
+    },
+    {
+      "include": "#prose"
+    },
+    {
+      "include": "#innerSyntax"
+    },
+    {
+      "include": "#cartouches"
+    },
+    {
+      "include": "#structure"
+    },
+    {
+      "include": "#goals"
+    },
+    {
+      "include": "#definitions"
+    },
+    {
+      "include": "#declarations"
+    },
+    {
+      "include": "#proof"
+    },
+    {
+      "include": "#methods"
+    },
+    {
+      "include": "#unfinished"
+    },
+    {
+      "include": "#quasiKeywords"
+    },
+    {
+      "include": "#otherCommands"
+    },
+    {
+      "include": "#symbols"
+    },
+    {
+      "name": "constant.numeric.isabelle",
+      "match": "(?<![\\p{L}\\p{N}_'])[0-9]+(?![\\p{L}\\p{N}_'])"
+    }
+  ],
+  "repository": {
+    "comments": {
+      "name": "comment.block.isabelle",
+      "begin": "\\(\\*",
+      "end": "\\*\\)",
+      "patterns": [
+        {
+          "include": "#comments"
+        }
+      ]
+    },
+    "prose": {
+      "patterns": [
+        {
+          "name": "comment.block.documentation.isabelle",
+          "begin": "(?<![\\p{L}\\p{N}_'.])(text|txt|text_raw|chapter|section|subsection|subsubsection|paragraph|subparagraph)(?![\\p{L}\\p{N}_'.])\\s*(‹|\\\\<open>)",
+          "beginCaptures": {
+            "1": {
+              "name": "keyword.other.document.isabelle"
+            },
+            "2": {
+              "name": "punctuation.definition.comment.begin.isabelle"
+            }
+          },
+          "end": "›|\\\\<close>",
+          "endCaptures": {
+            "0": {
+              "name": "punctuation.definition.comment.end.isabelle"
+            }
+          },
+          "patterns": [
+            {
+              "include": "#proseNested"
+            }
+          ]
+        },
+        {
+          "name": "comment.block.documentation.isabelle",
+          "begin": "(?<![\\p{L}\\p{N}_'.])(text|txt|text_raw|chapter|section|subsection|subsubsection|paragraph|subparagraph)(?![\\p{L}\\p{N}_'.])\\s*(\")",
+          "beginCaptures": {
+            "1": {
+              "name": "keyword.other.document.isabelle"
+            },
+            "2": {
+              "name": "punctuation.definition.comment.begin.isabelle"
+            }
+          },
+          "end": "\"",
+          "endCaptures": {
+            "0": {
+              "name": "punctuation.definition.comment.end.isabelle"
+            }
+          },
+          "patterns": [
+            {
+              "match": "\\\\[\\\\\"]"
+            }
+          ]
+        },
+        {
+          "name": "keyword.other.document.isabelle",
+          "match": "(?<![\\p{L}\\p{N}_'.])(text|txt|text_raw|chapter|section|subsection|subsubsection|paragraph|subparagraph)(?![\\p{L}\\p{N}_'.])"
+        }
+      ]
+    },
+    "proseNested": {
+      "begin": "‹|\\\\<open>",
+      "end": "›|\\\\<close>",
+      "patterns": [
+        {
+          "include": "#proseNested"
+        }
+      ]
+    },
+    "innerSyntax": {
+      "name": "meta.inner-syntax.isabelle",
+      "begin": "\"",
+      "end": "\"",
+      "beginCaptures": {
+        "0": {
+          "name": "punctuation.definition.inner-syntax.begin.isabelle"
+        }
+      },
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.definition.inner-syntax.end.isabelle"
+        }
+      },
+      "patterns": [
+        {
+          "include": "#inner"
+        }
+      ]
+    },
+    "inner": {
+      "patterns": [
+        {
+          "name": "constant.character.escape.isabelle",
+          "match": "\\\\(?:[\\\\\"]|[0-9]{3})"
+        },
+        {
+          "include": "#symbols"
+        },
+        {
+          "name": "keyword.operator.type.isabelle",
+          "match": "::"
+        },
+        {
+          "name": "storage.type.variable.isabelle",
+          "match": "'[\\p{L}_][\\p{L}\\p{N}_']*"
+        },
+        {
+          "name": "constant.numeric.isabelle",
+          "match": "(?<![\\p{L}\\p{N}_'])[0-9]+(?![\\p{L}\\p{N}_'])"
+        },
+        {
+          "name": "constant.language.isabelle",
+          "match": "(?<![\\p{L}\\p{N}_'.])(True|False|undefined)(?![\\p{L}\\p{N}_'.])"
+        },
+        {
+          "name": "keyword.other.inner.isabelle",
+          "match": "(?<![\\p{L}\\p{N}_'.])(if|then|else|case|of|let|in|λ|SOME|THE|ALL|EX|div|mod|dvd)(?![\\p{L}\\p{N}_'.])"
+        },
+        {
+          "name": "variable.other.isabelle",
+          "match": "\\??[\\p{L}_][\\p{L}\\p{N}_']*(?:\\.[\\p{L}_][\\p{L}\\p{N}_']*)*"
+        },
+        {
+          "name": "keyword.operator.isabelle",
+          "match": "[-+*/=<>|&!~%^#@$:]+|\\.\\.|\\."
+        }
+      ]
+    },
+    "cartouches": {
+      "name": "string.quoted.other.isabelle",
+      "begin": "‹|\\\\<open>",
+      "end": "›|\\\\<close>",
+      "patterns": [
+        {
+          "include": "#cartouches"
+        },
+        {
+          "include": "#symbols"
+        }
+      ]
+    },
+    "structure": {
+      "name": "keyword.other.structure.isabelle",
+      "match": "(?<![\\p{L}\\p{N}_'.])(theory|imports|begin|end)(?![\\p{L}\\p{N}_'.])"
+    },
+    "goals": {
+      "match": "(?<![\\p{L}\\p{N}_'.])(lemma|theorem|corollary|proposition|schematic_goal)(?![\\p{L}\\p{N}_'.])(?:\\s+(?:\\(\\s*in\\s+[^)]*\\)\\s+)?([\\p{L}_][\\p{L}\\p{N}_'.]*)(?=\\s*(?:\\[[^\\]]*\\])?\\s*:))?",
+      "captures": {
+        "1": {
+          "name": "storage.type.isabelle"
+        },
+        "2": {
+          "name": "entity.name.function.isabelle"
+        }
+      }
+    },
+    "definitions": {
+      "match": "(?<![\\p{L}\\p{N}_'.])(definition|abbreviation|fun|function|primrec|primcorec|datatype|codatatype|inductive|coinductive|inductive_set|locale|class|type_synonym|typedef|record|interpretation|sublocale)(?![\\p{L}\\p{N}_'.])(?:\\s+(?:\\([^)]*\\)\\s+|'[\\p{L}_][\\p{L}\\p{N}_']*\\s+)*([\\p{L}_][\\p{L}\\p{N}_']*)(?![\\p{L}\\p{N}_'.]))?",
+      "captures": {
+        "1": {
+          "name": "storage.type.isabelle"
+        },
+        "2": {
+          "name": "entity.name.function.isabelle"
+        }
+      }
+    },
+    "declarations": {
+      "name": "storage.type.isabelle",
+      "match": "(?<![\\p{L}\\p{N}_'.])(declare|lemmas|axiomatization|instantiation|instance|consts|named_theorems|notation|no_notation|syntax|translations|bundle|context|notepad)(?![\\p{L}\\p{N}_'.])"
+    },
+    "proof": {
+      "name": "keyword.control.proof.isabelle",
+      "match": "(?<![\\p{L}\\p{N}_'.])(proof|qed|have|show|obtain|assume|presume|fix|from|then|hence|thus|using|unfolding|also|finally|next|case|with|note|let|moreover|ultimately|by|apply|apply_end|done|supply|define|consider|interpret|subgoal|prefer|defer|back|including)(?![\\p{L}\\p{N}_'.])|(?<![^\\s])\\.\\.?(?![^\\s])"
+    },
+    "methods": {
+      "match": "(?<=\\bby\\s|\\bapply\\s|\\bproof\\s|[(\\[,;|+])\\s*(simp_all|simp|auto|blast|metis|force|fastforce|arith|linarith|rule|erule|drule|frule|induction|induct|cases|clarsimp|clarify|safe|intro|elim|presburger|smt|meson|unfold|fold|subst|insert|standard|this|assumption|fact|rule_tac|erule_tac|drule_tac|frule_tac|case_tac|induct_tac|rename_tac|rotate_tac|subgoal_tac|split|atomize|coinduct|coinduction|algebra|eval|normalization|transfer|argo|satx|iprover|best|slow|hypsubst|unfold_locales|intro_classes|intro_locales|order|use|goal_cases|succeed|fail|-)(?![\\p{L}\\p{N}_'.])",
+      "captures": {
+        "1": {
+          "name": "support.function.method.isabelle"
+        }
+      }
+    },
+    "unfinished": {
+      "name": "keyword.other.unfinished.isabelle",
+      "match": "(?<![\\p{L}\\p{N}_'.])(sorry|oops)(?![\\p{L}\\p{N}_'.])"
+    },
+    "quasiKeywords": {
+      "name": "keyword.other.quasi.isabelle",
+      "match": "(?<![\\p{L}\\p{N}_'.])(where|and|for|is|if|shows|assumes|fixes|obtains|defines|notes|includes|in|open|overloaded|infix|infixl|infixr|binder|structure)(?![\\p{L}\\p{N}_'.])"
+    },
+    "otherCommands": {
+      "name": "keyword.other.command.isabelle",
+      "match": "(?<![\\p{L}\\p{N}_'.])(value|thm|term|typ|prop|find_theorems|find_consts|print_statement|print_theorems|print_commands|print_locale|print_cases|print_context|sledgehammer|try0|try|nitpick|quickcheck|solve_direct|ML|ML_prf|ML_val|ML_file|ML_command|setup|local_setup|method_setup|attribute_setup|declaration|export_code|code_printing|lift_definition|setup_lifting|unbundle|hide_const|hide_fact|hide_type|hide_class)(?![\\p{L}\\p{N}_'.])"
+    },
+    "symbols": {
+      "patterns": [
+        {
+          "name": "constant.character.escape.isabelle",
+          "match": "\\\\<\\^?[A-Za-z][A-Za-z0-9_]*>"
+        },
+        {
+          "name": "keyword.operator.isabelle",
+          "match": "[∀∃⋀⋁λ⇒⟹⟶⟷⟺¬∧∨∈∉⊆⊂∪∩≠≤≥≡×⋅√]"
+        },
+        {
+          "name": "constant.language.isabelle",
+          "match": "[ℕℤℚℝℂ]"
+        }
+      ]
+    }
+  }
+}
