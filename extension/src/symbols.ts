@@ -76,6 +76,16 @@ export function symbolGlyph(name: string): string | undefined {
 }
 export function isSymbolName(name: string): boolean { return entries.some(entry => entry.name === name); }
 
+// Unicode back to Isabelle's ASCII encoding, for text that goes into a theory
+// file (a suggested proof from the output). Script glyphs become control
+// symbols; the thin space after a sum is display-only.
+export function asciiSymbols(text: string): string {
+  const scripts = new Map<string, string>();
+  for (const [char, glyph] of Object.entries(superscripts)) scripts.set(glyph, `\\<^sup>${char}`);
+  for (const [char, glyph] of Object.entries(subscripts)) scripts.set(glyph, `\\<^sub>${char}`);
+  return [...text.replace(/\u2009/g, '')].map(char => scripts.get(char) ?? (names.has(char) ? `\\<${names.get(char)}>` : char)).join('');
+}
+
 export function unicodeSymbols(text: string): string {
   return text.replace(/\\<(\^?[A-Za-z][A-Za-z0-9_]*)>/g,
     (encoded, name: string) => Object.hasOwn(symbols, name) ? symbols[name] : encoded)

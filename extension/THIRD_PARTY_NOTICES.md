@@ -86,11 +86,28 @@ comments, strings and cartouches; headings nest; `begin … end` blocks contain;
 items fold to the next item) follows yfprojects' `outline.ts`; `src/outlineModel.ts`
 is written on top of this project's own `isarTokens` lexer.
 
+# yfprojects/vscode-isabelle colour table
+
+The light/dark text colours in `src/viewTheme.ts` (`textColours`) are the
+`ISABELLE_COLORS` table of `src/colors.ts` in yfprojects' `vscode-isabelle`
+extension (BSD-3-Clause), which in turn ported the `isabelle.text_color`
+defaults of the official Isabelle/VSCode extension's `package.json`. Only the
+values were taken; the dark `keyword3` entry had a stray parenthesis and was
+corrected. The message backgrounds and underlines are from
+`Isabelle2025-2.app/etc/isabelle.css` (covered by the notice above). The
+sanitiser in `src/outputHtml.ts` is written here; the width report in the goals
+webview follows the approach of the official `extension/media/main.js`. The
+placement rule of `proofEdit` in `src/insertProof.ts` (replace a following
+`sorry`/`oops`, else a new indented line) follows the shape of `proofEdit` in
+yfprojects' `src/sledgehammer_text.ts` and jEdit's `Isabelle.edit_command`;
+the code is written here.
+
 ```text
 BSD 3-Clause License
 
 Copyright (c) 2026, yfprojects (github.com user) and collaborators
 All rights reserved.
+Copyright (c) yfprojects and contributors.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -105,6 +122,9 @@ modification, are permitted provided that the following conditions are met:
 3. Neither the name of the copyright holder nor the names of its
    contributors may be used to endorse or promote products derived from
    this software without specific prior written permission.
+3. Neither the name of the copyright holder nor the names of its contributors
+   may be used to endorse or promote products derived from this software
+   without specific prior written permission.
 
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE

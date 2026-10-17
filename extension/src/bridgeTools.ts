@@ -114,7 +114,8 @@ export class BridgeTools {
     const position = this.position(document, params.line, params.col);
     editor.selection = new Selection(position, position);
     editor.revealRange(new Range(position, position));
-    this.goals.follow(editor);
+    // The agent moved the cursor on purpose: query even while the view is paused.
+    this.goals.follow(editor, true);
     const version = document.version;
     const deadline = Date.now() + 30000;
     while (Date.now() < deadline) {
@@ -122,9 +123,11 @@ export class BridgeTools {
         || !editor.selection.active.isEqual(position) || !this.goals.matches(document, position.line, position.character)) {
         throw new Error('The document or cursor changed during the query. Retry goals_at.');
       }
-      const state = this.view.snapshot();
+      const { html, goalHtml, facts, messages, pins, paused, ...state } = this.view.snapshot();
       if (['ready', 'unfinished', 'error'].includes(state.phase) && this.goals.processing(document).processed) {
-        return { ...identity(), line: position.line, col: position.character, ...state };
+        // Agents read text; the sanitised HTML stays in the sidebar.
+        return { ...identity(), line: position.line, col: position.character, ...state,
+          facts: (facts ?? []).map(fact => fact.text), messages: (messages ?? []).map(({ kind, text }) => ({ kind, text })) };
       }
       if (state.phase === 'unavailable') throw new Error('No goal state at this position; choose a proof command.');
       await pause(25);

@@ -8,6 +8,8 @@ fully checked proof that sqrt 2 is irrational in `examples/Sqrt2.thy`, with no
 M6 adds a theme-aware sidebar, Unicode output and a theory/check-status header.
 M7 adds **Isabelle Swarm**, a live card board for six proof steps filled through MCP.
 M8 adds **Ask Isabelle**: streamed Claude Code replies and proof edits through those same tools.
+The goals sidebar then gained Isabelle's output colours, facts, messages and a done state,
+then pinned goals, a pause button and copy-to-editor for suggested proofs.
 
 ## Try the extension in under five minutes
 
@@ -250,6 +252,54 @@ fixture under `.dev-host/`, insertion through the server, the fully checked
 theory afterwards, cancellation on a lemma that needs induction, and lens
 and hover providers. `python3 scripts/sledgehammer_probe.py --isabelle …`
 captures the raw query traffic and fixtures.
+
+## Goals sidebar: colours, facts, messages (Alex's feedback 8, 12–14)
+
+The **Isabelle Goals** view shows the header `Sqrt2.thy:12:5` (caret line and
+column, one-based) with a status badge, then four collapsible sections whose
+state is remembered: **Goal** (the proof state in Isabelle's own colours —
+free, bound and skolem variables, keywords, numerals — with entity links that
+open the defining theory on click, and a green **✓ No goals — this step is
+complete** banner when a step is finished), **Facts** (the `this:` / `using
+this:` lines of the state), **Messages** (the command's output: `value` and
+`thm` results, `try0` suggestions, warnings and errors, each with an icon and
+a count badge) and **Ask**. A position outside any proof shows **Not in a
+proof**. The goal wraps to the panel's width: the webview reports its column
+count and the extension passes it to the server as the pretty-print margin.
+Colours follow the official Isabelle/VSCode palette for light and dark themes
+and the theme's own colours in high contrast.
+
+`bash scripts/check_goals.sh` runs the pure checks
+(`node extension/test/unit_goals.cjs`, `node extension/test/unit_goalsView.cjs`;
+the first reads real server output from `extension/test/fixtures/output/`) and
+then a stock VS Code host with the real server. Server HTML is never inserted
+unsanitised: see `src/outputHtml.ts` and the notes in
+[PROTOCOL_NOTES.md](../docs/PROTOCOL_NOTES.md).
+
+## Pin, pause and insert (Alex's feedback 15 and 16)
+
+The header of **Isabelle Goals** has **Pin** and **Pause** buttons (also as
+icons in the view's title bar and as the commands **Isabelle: Pin Goal**,
+**Isabelle: Toggle Pause Goals** and **Isabelle: Unpin All Goals**). **Pin**
+keeps the goal on show as a card above the live goal, titled `Sqrt2.thy:12`,
+with **Go to** (reveal the pinned position) and **Unpin**. A pin is a
+snapshot: it never follows the cursor, and once the theory is edited it says
+*Theory edited since pinned* (pin again for a fresh one). **Pause** stops the
+live goal and messages from following the cursor (badge *paused*); **Resume**
+follows the cursor again at once. MCP `goals_at` still moves the cursor and
+answers while paused.
+
+A message with a suggested proof (`try0`'s *Try this: by simp*, Sledgehammer's
+`by (metis …)`) gets an **Insert ‹by simp›** button. It replaces a `sorry` or
+`oops` at the end of the command's line or alone on the next line, and
+otherwise adds the proof on a new line indented two deeper, as jEdit's
+sendback does; Unicode in the suggestion is written back as ASCII `\<…>`,
+and the caret lands after the inserted text.
+
+`bash scripts/check_goals2.sh` runs `node extension/test/unit_insertProof.cjs`
+and the webview checks, then a stock VS Code host with the real server: `try0`'s
+suggestion replacing `sorry` and checking clean, a pin that outlives cursor
+moves and is flagged stale by an edit, pause and resume, and unpin all.
 
 ## Run the goal probe
 

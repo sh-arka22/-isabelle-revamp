@@ -31,6 +31,9 @@
       { "command": "isabelleRevamp.showSwarm", "title": "Isabelle: Show Swarm" },
       { "command": "isabelleRevamp.openGoalsPanel", "title": "Isabelle: Open Goals Beside Editor" },
       { "command": "isabelleRevamp.restartServer", "title": "Isabelle: Restart Language Server" },
+      { "command": "isabelleRevamp.pinGoal", "title": "Isabelle: Pin Goal", "icon": "$(pin)" },
+      { "command": "isabelleRevamp.unpinAll", "title": "Isabelle: Unpin All Goals", "icon": "$(pinned-dirty)" },
+      { "command": "isabelleRevamp.togglePauseGoals", "title": "Isabelle: Toggle Pause Goals", "icon": "$(debug-pause)" },
       { "command": "isabelleRevamp.sledgehammer", "title": "Isabelle: Sledgehammer" },
       { "command": "isabelleRevamp.try0", "title": "Isabelle: try0" },
       { "command": "isabelleRevamp.sledgehammerCancel", "title": "Isabelle: Cancel Sledgehammer" },
@@ -38,6 +41,10 @@
       { "command": "isabelleRevamp.showSledgehammer", "title": "Isabelle: Show Sledgehammer" }
     ],
     "menus": {
+      "view/title": [
+        { "command": "isabelleRevamp.pinGoal", "when": "view == isabelleRevamp.goals", "group": "navigation@1" },
+        { "command": "isabelleRevamp.togglePauseGoals", "when": "view == isabelleRevamp.goals", "group": "navigation@2" }
+      ],
       "commandPalette": [
         { "command": "isabelleRevamp.sledgehammerInsert", "when": "false" }
       ]

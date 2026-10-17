@@ -796,3 +796,159 @@ exactly one query operation (`sledgehammer_query`, `vscode_sledgehammer.scala`);
   5.9 s warm; try0-only on `rev_rev` 1.6 s (`simp`, `auto`, `fastforce`,
   `force`, `metis rev_rev_ident`). cvc5, veriT, E, SPASS, Vampire and
   Zipperposition all found proofs; z3 reported none in these runs.
+
+## Goals sidebar — coloured output, messages, facts (2026-10-17)
+
+Captured with a stdio probe on a scratch theory (`value`, `thm`, `try0`, a
+failing `by (rule TrueI)`, `sorry`, and the complete sqrt-2 proof), once with
+`-o editor_output_state=true` and once with `false`. The raw HTML of
+`PIDE/dynamic_output` and `PIDE/state_output` is kept under
+`extension/test/fixtures/output/*.html` (library paths shortened to
+`/opt/Isabelle2025-2`); the unit tests read those files.
+
+### Markup
+
+The server's `Browser_Info.make_html` output is one `<pre class="source">`
+containing nested `<span>`s. The class is a `Rendering.Color` name for
+text-colour markup (`free`, `bound`, `skolem`, `tfree`, `tvar`, `var`,
+`keyword1`, `main`, `inner_numeral`, …), or the markup name otherwise
+(`state_message`, `writeln_message`, `error_message`, `warning_message`,
+`text_fold`, `position`, `notation`, `typing`, `subgoal`, `expression`,
+`bullet`, `const`, `tconst`, `separator`, `sendback`). Messages are the direct
+children of the `pre`, one `<span class="…_message">` each, separated by
+`<span class="separator"> </span>` and a newline (`Pretty.separate`). Line
+breaks inside a message are literal newlines; an empty line is a self-closing
+`<span class="text_fold"/>`, and empty output is `<pre class="source"/>`.
+Entity references with a definition position are
+`<a href="file:/absolute/path/Theory.thy#LINE">` — `file:` with one slash and a
+one-based line fragment (`make_ref` in `pretty_text_panel.scala`). Superscripts
+are literal control symbols in text, `<span class="main">⇧2</span>`, never
+`<sup>`. Quotes are `&quot;`. Observed at `value "(1::nat) + 1"`:
+
+```html
+<pre class="source"><span class="writeln_message">&quot;<span class="typing"><span class="notation">2</span></span>&quot;
+  :: &quot;<a href="file:/opt/Isabelle2025-2/src/HOL/Nat.thy#32"><span class="tconst">nat</span></a>&quot;</span></pre>
+```
+
+`try0` emits one `writeln_message` per finding, with the suggested proof in an
+active area: `Found proof: <span class="sendback">by presburger</span> (8 ms)`,
+then `Try this: <span class="sendback">by auto</span>`. A failed method emits a
+`writeln_message` (the statement) and an `error_message` whose text starts with
+`Failed to apply initial proof method⌂:` and repeats the goal. `thm` of an
+unknown fact is one `error_message`. At `sorry` only the statement `writeln`
+arrives; `PIDE/state_output` sends nothing there, nor at `value`, `thm`, or a
+blank line: the state query answers only when the command has a proof state.
+
+### Facts in the state
+
+`print_state` writes chained facts before the goal, as `this:` (state mode),
+`using this:` (prove mode) or `picking this:` (chain mode, at `then`). One fact
+is indented by two; several share a deeper bullet indentation:
+
+```text
+proof (prove)
+using this:
+    real m = sqrt 2 * real n
+    (sqrt 2)⇧2 = 2
+
+goal (1 subgoal):
+ 1. (real m)⇧2 = 2 * (real n)⇧2
+```
+
+The finished last step is `proof (state)\nthis:\n  False\n\ngoal:\nNo subgoals!`.
+`stateParts.ts` splits the facts block from the goal on the plain text and
+applies the same line indexes to the sanitised HTML lines.
+
+### editor_output_state decision
+
+With `-o editor_output_state=false`, `PIDE/dynamic_output` carries only the
+messages (writeln, warning, error, `try0` results) and `PIDE/state_output`
+still returns the goal, exactly as hoped. But the dynamic output is
+deduplicated against the previous content, and with `false` a proof command
+without messages sends nothing at all, so the client cannot tell "no message
+yet" from "no proof state here". With `true` the dynamic output for a proof
+command always contains a `state_message`; its absence after a caret update
+means that the tagged state query will never answer (`value`, `thm`, `sorry`,
+blank lines). The extension therefore keeps `editor_output_state=true`, splits
+the dynamic output textually (`splitMessages`: the top-level `…_message` spans,
+state messages dropped), uses it as the Messages source, and treats a dynamic
+reply without a state as the confirmation of an empty goal, so the sidebar
+shows **Not in a proof** at once instead of **unavailable** after ten seconds.
+When two consecutive positions have identical non-proof output the second one
+produces no dynamic output; a three-second timer on a settled document (no
+busy decorations, query open) resolves it the same way.
+
+### Caret perspective
+
+`vscode_caret_perspective` defaults to 50: the server executes only the
+commands within 50 lines above and below the caret (`VSCode_Model.
+node_perspective`), and nothing at all before the first `PIDE/caret_update`.
+Observed with the raw server on a 60-line theory: after an edit at line 8 the
+final `end` (`[59,0,59,3]`) stayed in `background_unprocessed1` and
+`text_overview_unprocessed` indefinitely; `PIDE/state_update`,
+`PIDE/state_init`, `PIDE/output_set_margin`, a no-op `didChange` and a caret
+update on the same line changed nothing, and a caret update to the next line
+settled it within a second (8 + 50 + 1 = 59 excludes line 59). The sidebar's
+`checking…` badge and the whole-buffer `fully checked` status therefore
+depended on where the caret was. The extension now starts the server with
+`-o vscode_caret_perspective=0` ("unrestricted"), which makes the perspective
+the whole text of every open theory, as `etc/options` documents.
+
+### Margin
+
+`PIDE/output_set_margin {margin}` and `PIDE/state_set_margin {id, margin}`
+take a number of characters (`vscode_message_margin` defaults to 80) and
+re-emit the output after `vscode_output_delay` if the wrapping changed. The
+webview measures its width in editor-font columns (a ten-character probe,
+like the official `media/main.js`), reports it debounced, and the extension
+clamps it to 40–200 and sends both messages; each fresh state query receives
+the current margin after `PIDE/state_init`. The live check wraps a 160-column
+goal at margin 40 and unwraps it at 200.
+
+### Safety
+
+`outputHtml.ts` tokenises the server HTML and rebuilds it with only `span`,
+`a`, `br`, `pre`, `sup`, `sub`, `b`, `i`, only the `class` attribute, and only
+allow-listed class names (the `Rendering.Color` names, the extra classes of
+`etc/isabelle.css`, the `…_message` classes and `sendback`). An `<a href>` is
+kept only as `<span class="isa-link" data-link="…">` when the href is a
+`file:` URI with an absolute path and an optional numeric fragment; the
+extension parses it again before opening the file. Spans left without a class
+contribute their text only. Comments, doctype, unknown and unclosed tags,
+`javascript:`/`data:` links and attributes such as `onclick` are dropped or
+escaped; the webview CSP stays `default-src 'none'` and the goal element is
+filled with this output only. `outputText()` is unchanged.
+
+### Frozen state panels (pins)
+
+Probed with a stdio client on a scratch theory (`lemma first: "x + 0 =
+(x::nat)" sorry`, `lemma second: "(y::nat) * 1 = y" sorry`, server options
+as the extension's). Caret on `first`, `PIDE/state_init` → `{state_id: -1}`
+(ids are negative), `PIDE/state_output {id: -1, auto_update: true}` with the
+goal `x + 0 = x`; then `PIDE/state_auto_update {id: -1, enabled: false}`.
+After that:
+
+| Step | `state_output` for `-1` |
+|------|-------------------------|
+| caret to `second` | none in 5 s |
+| `didChange`: edit `second`'s statement | none in 8 s |
+| `didChange`: edit `first`'s own statement | none in 8 s |
+| `PIDE/state_update {id: -1}` with the caret on `second` | **`y * 1 = y + 0`** — the panel now shows the caret's command |
+| caret back on `first`, `state_update` | `x + 1 = Suc x` (the edited command) |
+| caret on `second`, `state_auto_update {enabled: true}` | `y * 1 = y + 0` at once |
+| `state_exit`, then `state_update` | nothing |
+
+This matches `State_Panel.update()` in `src/Tools/VSCode/src/state_panel.scala`:
+unless the query already sits on the caret's command it calls
+`print_state.apply_query(Nil)`, which queries the *current* command; with
+auto update disabled the panel's `Commands_Changed`/`Caret_Focus` consumer
+does nothing, and `Query_Operation` only re-renders a finished query when its
+command changes while `update_pending`. Every `state_output` echoes
+`auto_update`.
+
+Consequence for pins: a pinned goal is a snapshot. The extension adopts the
+live panel (its content is already confirmed for the caret), freezes it, and
+opens a new live panel; it never sends `state_update` to a pin, since that
+would move the pin to the caret, and flags the pin *stale* when the
+document version changes. A refresh in place would need the caret on the
+pinned command (then `state_update` re-queries it, as the fifth row shows).

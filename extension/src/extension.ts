@@ -1,10 +1,11 @@
 import { homedir } from 'node:os';
 import { resolve } from 'node:path';
-import { commands, Disposable, ExtensionContext, Hover, languages, MarkdownString, StatusBarAlignment, TextEditor, window, workspace } from 'vscode';
+import { commands, Disposable, ExtensionContext, Hover, languages, MarkdownString, Position, Range, Selection, StatusBarAlignment, TextEditor, Uri, window, workspace } from 'vscode';
 import { LanguageClient, ServerOptions, State } from 'vscode-languageclient/node';
 import { Goals } from './goals';
 import { GoalsView } from './goalsView';
 import { GoalsPanel } from './goalsPanel';
+import { proofEdit } from './insertProof';
 import { Bridge } from './bridge';
 import { BridgeTools } from './bridgeTools';
 import { hoverCode } from './hoverText';
@@ -63,6 +64,48 @@ export async function activate(context: ExtensionContext) {
     await commands.executeCommand('isabelleRevamp.goals.focus');
     await commands.executeCommand('workbench.action.focusActiveEditorGroup');
   };
+  // Entity links in the output open their defining theory, as the official
+  // extension's open_webview_link does; most point into the Isabelle library.
+  view.onOpen = link => {
+    const position = new Position(link.line, 0);
+    void window.showTextDocument(Uri.file(link.path), { preserveFocus: false, selection: new Selection(position, position) });
+  };
+  view.onResize = columns => goals?.setMargin(columns);
+  const pinGoal = () => {
+    if (!goals?.pinGoal()) window.setStatusBarMessage('Isabelle: no goal to pin at the cursor yet', 3000);
+  };
+  const goToPin = (id: number) => {
+    const pin = goals?.pinned(id);
+    if (!pin) return;
+    const position = new Position(pin.position.line, pin.position.character);
+    void window.showTextDocument(Uri.parse(pin.uri), { preserveFocus: false, selection: new Selection(position, position) });
+  };
+  // A suggested proof goes in at the command the goals belong to, as jEdit's
+  // sendback does; the editor then gets the focus with the caret after it.
+  const insertProofText = async (text: string): Promise<boolean> => {
+    const caret = goals?.currentCaret();
+    const editor = window.visibleTextEditors.find(candidate => candidate.document.uri.toString() === caret?.uri) ?? visibleTheory();
+    if (!editor || editor.document.languageId !== 'isabelle') return false;
+    const line = caret && editor.document.uri.toString() === caret.uri ? caret.line : editor.selection.active.line;
+    const edit = proofEdit(editor.document, line, text);
+    if (!edit) return false;
+    const applied = await editor.edit(builder => builder.replace(
+      new Range(edit.startLine, edit.startCharacter, edit.endLine, edit.endCharacter), edit.text));
+    if (!applied) return false;
+    const lines = edit.text.split('\n');
+    const end = lines.length === 1 ? new Position(edit.startLine, edit.startCharacter + edit.text.length)
+      : new Position(edit.startLine + lines.length - 1, lines[lines.length - 1].length);
+    await window.showTextDocument(editor.document, { viewColumn: editor.viewColumn, selection: new Selection(end, end) });
+    return true;
+  };
+  view.onInsert = text => { void insertProofText(text); };
+  view.onAction = (action, data) => {
+    if (action === 'pin') pinGoal();
+    else if (action === 'pause') goals?.togglePause();
+    else if (action === 'unpin') goals?.unpin(Number(data.id));
+    else if (action === 'unpin-all') goals?.unpinAll();
+    else if (action === 'goto') goToPin(Number(data.id));
+  };
   context.subscriptions.push(output, panel,
     window.registerWebviewViewProvider('isabelleRevamp.goals', view),
     commands.registerCommand('isabelleRevamp.showGoals', () =>
@@ -72,7 +115,10 @@ export async function activate(context: ExtensionContext) {
       view.focusAsk();
       await commands.executeCommand('isabelleRevamp.goals.focus');
       view.focusAsk();
-    }));
+    }),
+    commands.registerCommand('isabelleRevamp.pinGoal', pinGoal),
+    commands.registerCommand('isabelleRevamp.unpinAll', () => goals?.unpinAll()),
+    commands.registerCommand('isabelleRevamp.togglePauseGoals', () => goals?.togglePause()));
 
   const configured = settings().get<string>('executable', 'isabelle');
   const executable = configured.startsWith('~/')
@@ -115,6 +161,9 @@ export async function activate(context: ExtensionContext) {
     // Diagnostics and hover text arrive decoded; edits (completions) stay ASCII.
     '-o', 'vscode_unicode_symbols_output=true',
     '-o', 'vscode_unicode_symbols_edits=false',
+    // Process the whole open theory, not only ±50 lines around the caret:
+    // the status badge and "fully checked" must not depend on the caret.
+    '-o', 'vscode_caret_perspective=0',
   ];
   const server: ServerOptions = { command: executable, args };
   let clientSubscriptions: Disposable[] = [];
@@ -253,6 +302,7 @@ export async function activate(context: ExtensionContext) {
     getEditorDecorations: () => decorations.snapshot(window.activeTextEditor),
     getTheoremStatuses: () => theoremGutter.statuses(window.activeTextEditor),
     selectSwarmStep: (uri: string, version: number, id: string) => swarm.select(uri, version, id),
+    setGoalsMargin: (columns: number) => goals?.setMargin(columns), insertProofText,
     getLockedDocuments: () => [...locked], getLibraryRoots: () => [...roots],
     getGoalPanelState: () => ({ open: panel.open, autoOpened, attached: view.attached }),
     getServerStatus: () => status.phase,

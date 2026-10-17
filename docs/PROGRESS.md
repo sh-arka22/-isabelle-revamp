@@ -573,3 +573,92 @@
   cursor on a `have` and run **Isabelle: Sledgehammer** to see the lens,
   hover and view; Isar proofs (`isar: true`) and a per-`sorry` batch run are
   not exposed yet.
+
+## 2026-10-17 — Goals sidebar: colour, messages, facts, done state (Alex's 8, 12, 13, 14)
+
+- **Changed:** the sidebar now renders Isabelle's own output markup instead of
+  stripping it. `outputHtml.ts` is a tokenizer-based sanitiser (allow-listed
+  elements and class names, entity links as `data-link` spans, `⇧c`/`⇩c` as
+  `sup`/`sub` when no glyph exists); `viewTheme.ts` colours every allowed class
+  with the official light/dark palette (ported from yfprojects' `colors.ts`,
+  credited in the notices) and falls back to theme variables in high contrast.
+  The view has a header line `Sqrt2.thy:12:5` with a coloured status badge,
+  then collapsible **Goal**, **Facts** (`this:` / `using this:` lines, split by
+  the pure `stateParts.ts`), **Messages** (writeln/warning/error output of the
+  command, with an icon, a left border and a count) and **Ask** sections, with
+  the collapse state persisted in the webview state. `No subgoals!` shows a
+  green **✓ No goals — this step is complete** banner; a settled position
+  without a state shows **Not in a proof**. The panel width is reported to the
+  server as the pretty-print margin (`PIDE/output_set_margin`,
+  `PIDE/state_set_margin`). `getGoalState()` keeps `phase/text/errors/theory/
+  checkStatus` and adds `html`, `goalHtml`, `facts`, `messages`, `position`;
+  `goals_at` returns the facts and message texts without HTML. Extension
+  points for the next steps: `setHeaderActions()` for header buttons,
+  `setMessageActions()` for per-message controls, and `GoalsView.onAction`
+  for their `data-action` clicks.
+- **Passed:** `node extension/test/unit_goals.cjs` (real server fixtures,
+  hostile input, facts, done detection, view model) and
+  `node extension/test/unit_goalsView.cjs` (the webview script in a small DOM:
+  sections, persisted collapse, sanitised updates, link/action messages, width
+  report). `bash scripts/check_goals.sh` ran stock VS Code against the real
+  server: coloured free variable, facts at `then show`, `value` output in
+  Messages, the done banner, `try0` sendback messages, the blank-line note,
+  margin 40/200 re-wrapping, and a failed method's error message. The existing
+  M3 suite passes unchanged.
+- **Discovered:** `PIDE/state_output` never answers at a command without a
+  proof state, and identical dynamic output is deduplicated; with
+  `editor_output_state=true` the presence of a `state_message` in the dynamic
+  output tells the two cases apart, so that option stays on and the output is
+  split textually. Links are `file:/path#line` with one slash. Details and the
+  `editor_output_state=false` comparison are in `PROTOCOL_NOTES.md`. The
+  server only executes commands within `vscode_caret_perspective` (50) lines
+  of the caret, so a theory's `end` beyond that stayed unprocessed and the
+  badge stuck at `checking…` until the caret moved; the launch options now
+  add `-o vscode_caret_perspective=0` so the whole open theory is checked.
+- **Test expectations changed on purpose:** `askView.cjs` now asserts that the
+  Ask section comes after the header (it was first), and runs the webview
+  script in the shared `fakeDom.cjs` tree instead of a flat element map.
+- **Next:** pin/pause buttons in the header area and copy-to-editor on
+  messages (Alex's 15 and 16) through the hooks above; a `sendback` click
+  could then insert `by simp` directly.
+
+## 2026-10-17 — Goals sidebar: pin, pause and copy-to-editor (Alex's 15 and 16)
+
+- **Changed:** the header gained **Pin** and **Pause** buttons (also icons in
+  the view's title bar and the commands `isabelleRevamp.pinGoal`,
+  `isabelleRevamp.togglePauseGoals`, `isabelleRevamp.unpinAll`). Pin adopts
+  the live server state panel, which already holds the confirmed state for the
+  caret, freezes it with `PIDE/state_auto_update {enabled: false}` and opens a
+  fresh live panel; the pin is a card above the live goal titled
+  `Sqrt2.thy:12`, with its facts, **Go to** and **Unpin**, and a *Theory
+  edited since pinned* note once the document version changes. Pause keeps
+  the state on show and stops sending the caret (badge *paused*); Resume
+  re-follows at once, and MCP `goals_at` forces a query while paused. Messages
+  (and a goal) with a `sendback` span get an **Insert ‹by simp›** button; the
+  webview posts `{type: 'insert', text}` and the pure `insertProof.ts` turns
+  it into an edit: replace a `sorry`/`oops` ending the command's line or alone
+  on the next line, else a new line indented two deeper, as jEdit's
+  `Active.action` does with `padding_command`. The suggestion's Unicode is
+  encoded back to ASCII with the new `asciiSymbols()` so theories stay ASCII.
+  `getGoalState()` adds `pins` (`{id, uri, theory, position, version, stale,
+  text, goalHtml, facts}`) and `paused`; the API adds `insertProofText(text)`.
+- **Passed:** `node extension/test/unit_insertProof.cjs` (sendbacks of the
+  real `try0` output, button markup, ASCII round trip, every edit rule),
+  `unit_goals.cjs` and `unit_goalsView.cjs` (pins, pause and insert in the
+  view model and the webview script). `bash scripts/check_goals2.sh` ran stock
+  VS Code against the real server: `try0`'s suggestion replaced `sorry` and
+  the theory checked clean with the caret after the proof; a pin kept its
+  goal through cursor moves, was flagged stale by an edit and removed by
+  **Unpin all**; paused goals ignored the cursor and resumed at once. The
+  M3 and M4 suites and `check_goals.sh` pass unchanged.
+- **Discovered (live, Isabelle2025-2):** a state panel with auto update off
+  keeps its content through caret moves, edits elsewhere and edits of its own
+  command; `PIDE/state_update` and `PIDE/state_auto_update true` both re-run
+  `print_state` at the *caret's* command, so neither can refresh a pin in
+  place — the pin stays a snapshot. State ids are negative (`-1`, `-2`, …).
+  Details in `PROTOCOL_NOTES.md`, "Frozen state panels".
+- **Test expectations changed on purpose:** `unit_goalsView.cjs` expects an
+  insert button to post `{type: 'insert', text}` rather than a generic
+  `action` message.
+- **Next:** Sledgehammer results as messages with the same Insert button
+  (Alex's 17), and a refresh of a pin when the caret returns to its command.
