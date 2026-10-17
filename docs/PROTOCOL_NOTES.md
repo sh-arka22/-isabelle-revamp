@@ -620,3 +620,49 @@ at line 1, columns 7–11 returned a single completion with label/insertText
 `\<Sum>`, filterText `\Sum`, detail `\<Sum> (symbol "∑")`, and a text edit
 replacing exactly `[1,7,1,11]` with `\<Sum>`. The accepted document contains
 ASCII, not `∑`. The receipt is `.dev-host/m9a-completion.json`.
+
+## Items 9, 10, 18 — decoration types as painted, outline, theorem marks
+
+Every `PIDE/decoration` entry type is `<prefix>_<Rendering.Color>` built in
+`src/Tools/VSCode/src/vscode_rendering.scala` (`decorations`), in canonical
+order: `background_*` (unprocessed1, running1, canceled, bad, intensify,
+quoted, antiquoted, markdown_bullet1–4), `foreground_*` (quoted, antiquoted),
+`text_*` (main, keyword1–3, quasi_keyword, improper, operator, tfree, tvar,
+free, skolem, bound, var, inner_numeral, inner_quoted, inner_cartouche,
+comment1–3, dynamic, class_parameter, antiquote, raw_text, plain_text),
+`text_overview_*` (unprocessed, running, error, warning), `dotted_*`
+(writeln, information, warning) and `spell_checker`. The official client
+renders `background_` as a background colour, `dotted_` as a 2 px dotted
+bottom border, `text_` as a foreground colour and `text_overview_` as an
+overview-ruler colour; `foreground_` is approximated as a background. Each
+range may carry `hover_message` (a list of marked strings); the extension
+stores ranges only.
+
+Observed on the completed `Sqrt2.thy` once settled (stdio probe with
+`vscode_pide_extensions=true`, then `PIDE/decoration_request` until the busy
+types are empty): `text_main` 189, `text_keyword1` 53, `text_keyword2` 7,
+`text_keyword3` 6, `text_quasi_keyword` 4, `text_operator` 16, `text_skolem`
+24, `text_var` 2, `text_plain_text` 5, `foreground_quoted` 27,
+`dotted_writeln` 17, and no `text_free`: the variables `m`, `n`, `k`
+introduced by `obtain` are skolem constants. In a locale with
+`fixes x :: nat`, `x` inside `lemma inside: "\<forall>y::nat. x \<le> y + x"`
+is `text_free` and `y` is `text_bound`.
+
+A dotted range covers the keyword of the command that produced the message,
+not the whole command: the 17 `dotted_writeln` ranges of `Sqrt2.thy` are
+exactly its `by` tokens (such as `[13,4,13,6]`) and its three `qed` tokens
+(`[50,0,50,3]`), because a terminal proof step reports the fact it proved as
+a `writeln` message. The same 17 ranges arrive with `editor_output_state=false`,
+so this is ordinary prover output, which jEdit underlines the same way, not an
+echo of the state option. `thm refl` likewise carries `dotted_writeln`. While
+the theory is being checked, forced snapshots carried up to 43
+`background_unprocessed1` ranges for the fixture, cleared by the final
+snapshot together with the overview ranges.
+
+The outline uses no protocol message: the server advertises no document or
+workspace symbol provider, so the lexical model supplies them. Theorem marks
+reuse the M5–M7 completion evidence (`processing(document).known`, busy
+ranges, `background_bad` ranges that select literal `sorry`, error
+diagnostics and `text_overview_error`); an `oops` is found lexically. A
+theory never visited by the cursor stays "checking" because its version has
+not been confirmed by a tagged state query.
