@@ -2,7 +2,7 @@
 
 **isabelle-revamp: system design and 24-hour plan**
 
-> **Changelog.** v1 = the merged plan. v1.1 = the 34 review fixes, the agent architecture (§11A) and the first-hour checklist (§0).
+> **Changelog.** v1 = the merged plan. v1.1 = the 34 review fixes, the agent architecture (§11A) and the first-hour checklist (§0). v1.2 = pointers only, no section rewritten: `docs/plans/isabelle-mcp.md` (proposal: Isabelle-MCP as the agents' prover interface, spike S7) and `docs/plans/vscode-companion.md` (implementation plan for #9 and #10).
 
 > Commit 0 on `main` of **`sh-arka22/-isabelle-revamp`** is this `PLAN.md` plus a short `README.md`. Both were pushed by the planning session (a Claude Code cloud session), which also pushed the four `proto/*` prototype branches (§8). We recommend renaming the repo to `sh-arka22/isabelle-revamp` (D2). Date: Sat 17 Oct 2026. Times are written T+h:mm from kickoff; §0 turns them into wall-clock times. The hackathon is about 24 h; §12 gives a 36 h variant.
 > Team:
@@ -328,6 +328,8 @@ These rules apply to every contract:
 - After the freeze, a change needs a PR labelled `contract-change`, a bump of `schema_version`, and approval from every consumer.
 
 ### 6.1 MCP tools (C4, `contracts/mcp-tools.json`)
+
+> **Proposed, not yet decided (`docs/plans/isabelle-mcp.md`):** a third server, `isabelle-lsp` = [Isabelle-MCP](https://github.com/xqyww123/Isabelle-MCP) 0.6.0, for perception and edit-then-check (`isabelle_launch`, `isabelle_evaluate_to`, `isabelle_goal`, `isabelle_find_theorems`, `isabelle_command_output`, …). Beam would keep only `run_at`; `find_theorems_at` would drop to SHOULD. Spike S7 (§12) and the Train 4 go/no-go decide.
 
 **Server `isabelle-beam`** (Scala; PIDE MCP plus our `beam` component, logic `HOL_Beam` or a generated `Beam_<Parent>`; owner retinapeg). It is not called `isabelle`, because a yfprojects build from `main` registers its own `isabelle` server. Lines are 1-based, and `origin` is a session-qualified theory name or a file path.
 
@@ -1072,6 +1074,7 @@ revamp map export -d thys "$(revamp session-of "$target")" -o out/ && revamp map
 | S4 AFP heaps | Alex starts it in the background at T+0:15 on the machine that will do the ζ(5) work (§0), with `threads` at about half its cores | the Prime_Number_Theorem chain (through Zeta_Function and HOL-Analysis/Complex_Analysis; peaks around 5 GB plus the JVM) builds locally in ≤ 60 min, and `heavy.yml` builds it too. Heaps are architecture-specific, so CI heaps cannot replace the local build on a Mac. | ζ(5) skeleton stated over HOL-Analysis `suminf`, with a red bridge node |
 | S5 export at scale (after S4) | ark | AFP `Zeta_3_Irrational`: 99 facts `fully_proved` in ≤ 2 min. Save-to-green measured with the single export build: on Demo now, on Apéry in #10 (target ≤ 30 s). | Export our own sessions only; memoise by theorem serial. If save-to-green is over 30 s, the demo script says so and shows a replay snapshot. |
 | S6 hover definition lookup | retinapeg, on the demo machine | `executeDefinitionProvider` on `geometric_sums` returns a location under `$ISABELLE_HOME/src`. **Plus a 10-minute check:** the ASCII marker `\<^marker>\<open>description \<open>…\<close>\<close>` in the Demo fixture is accepted by Isabelle and read by the C2 parser. | Look up the name in the index. If the marker is rejected, drop doc source 1 (§6.3). |
+| S7 Isabelle-MCP on 2025-2 **(proposed, `docs/plans/isabelle-mcp.md` §5)** | retinapeg, 20 min, in parallel with S2/S3 | `uv tool install isabelle-mcp==0.6.0` + `isabelle-mcp install --claude --name isabelle-lsp`; `isabelle_launch("HOL", ["<repo>/thys"])` without a build; evaluating `thys/Demo/Basics.thy` reports exactly the `sorry` lines 13 and 19; `isabelle_goal` at line 12 shows the open goal; the file stays ASCII | Drop Isabelle-MCP; S3's original fallback (PIDE MCP `get_state` plus edit-then-check) stands |
 
 **Rest blocks (staggered, so at least 2 people are always awake):**
 - retinapeg: T+9:15–12:15 (after M2)
