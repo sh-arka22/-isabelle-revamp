@@ -57,12 +57,19 @@ exports.checkSymbols = function () {
   // Context scan.
   assert.deepEqual(scanContext('lemma "x'), { comment: false, string: true, opens: 0 });
   assert.deepEqual(scanContext('(* (* nested *) still'), { comment: true, string: false, opens: 0 });
-  assert.deepEqual(scanContext('text \\<open>a \\<open>b\\<close>'), { comment: false, string: false, opens: 1 });
-  assert.deepEqual(scanContext('text \\<open>\n  next line'), { comment: false, string: false, opens: 0 });
+  assert.deepEqual(scanContext('text \\<open>a \\<open>b\\<close>'), { comment: false, string: false, opens: 1, command: 'text' });
+  assert.deepEqual(scanContext('text \\<open>\n  next line'), { comment: false, string: false, opens: 0, command: 'text' });
   assert.deepEqual(scanContext('"\\\\" (* not a comment'), { comment: true, string: false, opens: 0 });
+  // The enclosing command is the word before the outermost open cartouche, on any line.
+  assert.deepEqual(scanContext('ML \\<open>val s = "a'), { comment: false, string: true, opens: 1, command: 'ML' });
+  assert.deepEqual(scanContext('ML ‹\n  val s = "a'), { comment: false, string: true, opens: 0, command: 'ML' });
+  assert.deepEqual(scanContext('lemma foo: "x" ‹y ‹z›'), { comment: false, string: false, opens: 1, command: 'foo' });
+  assert.deepEqual(scanContext('text ‹a› lemma ‹'), { comment: false, string: false, opens: 1, command: 'lemma' });
+  assert.deepEqual(scanContext('‹'), { comment: false, string: false, opens: 1, command: '' });
 
   // Rewrite on type.
-  const known = name => entries.some(e => e.name === name);
+  // The installed table also has the one-letter bold alphabet (\<a>…\<Z>).
+  const known = name => name.length === 1 || entries.some(e => e.name === name);
   const at = (prefix, typed) => rewriteOnType(prefix, typed, known);
   assert.deepEqual(at('lemma "\\forall', ' '), { start: 7, end: 14, from: '\\forall', text: '\\<forall>' });
   assert.deepEqual(at('lemma "\\forall', ')'), { start: 7, end: 14, from: '\\forall', text: '\\<forall>' });
@@ -72,6 +79,17 @@ exports.checkSymbols = function () {
   assert.equal(at('lemma "\\foral', ' '), undefined, 'not exactly a symbol');
   assert.equal(at('lemma "\\forall', 'xy'), undefined, 'pasted text is not a keystroke');
   assert.equal(at('(* \\forall', ' '), undefined, 'never inside comments');
+  // ML strings, prose and the one-letter names stay as typed; inner syntax in a cartouche converts.
+  assert.equal(at('ML \\<open>val s = "a\\n', '"'), undefined, 'an ML string escape inside a cartouche');
+  assert.equal(at('ML ‹\n  val s = "a\\n', '"'), undefined, 'the same in a multi-line ML block');
+  assert.equal(at('setup \\<open>val s = "a\\forall', '"'), undefined, 'a string inside any cartouche is an ML string');
+  assert.equal(at('text \\<open>We have $x \\forall', ' '), undefined, 'LaTeX in prose');
+  assert.equal(at('section ‹Intro \\forall', ' '), undefined, 'and in headings');
+  assert.equal(at('lemma "a\\n', '"'), undefined, 'one-letter names are reached through completion only');
+  assert.equal(at('lemma "x\\t', ' '), undefined);
+  assert.deepEqual(at('lemma ‹x \\forall', ' '), { start: 9, end: 16, from: '\\forall', text: '\\<forall>' }, 'inner syntax in a cartouche');
+  assert.deepEqual(at('text ‹a› lemma ‹\\forall', ' '), { start: 16, end: 23, from: '\\forall', text: '\\<forall>' });
+  assert.deepEqual(at('ML ‹x› lemma "\\forall', ' '), { start: 14, end: 21, from: '\\forall', text: '\\<forall>' }, 'a closed ML block before');
   assert.deepEqual(at('x\\^sub', '1'), { start: 1, end: 6, from: '\\^sub', text: '\\<^sub>' });
   assert.equal(at('\\<forall', '>'), undefined);
   assert.deepEqual(at('text <', '<'), { start: 5, end: 7, from: '<<', text: '\\<open>' });

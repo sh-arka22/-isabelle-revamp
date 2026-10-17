@@ -75,7 +75,7 @@
         },
         "isabelleRevamp.symbolRewrite": {
           "type": "boolean", "default": true,
-          "description": "Rewrite ASCII input as you type, outside comments: \\name followed by a terminator becomes \\<name> when name is exactly a symbol; << at the start of a token becomes \\<open>; >> becomes \\<close> after an unclosed \\<open> on the same line or at the start of a token outside a quoted string. The file stays ASCII."
+          "description": "Rewrite ASCII input as you type, outside comments: \\name followed by a terminator becomes \\<name> when name is exactly a symbol, except the one-letter bold alphabet (\\n, \\t stay escapes), inside a string within a cartouche (an ML string) and inside the cartouche of an ML or document command (text, section, …), where \\in is LaTeX; << at the start of a token becomes \\<open>; >> becomes \\<close> after an unclosed \\<open> on the same line or at the start of a token outside a quoted string. The file stays ASCII."
         },
         "isabelleRevamp.decorations.semanticColours": {
           "type": "boolean", "default": true,

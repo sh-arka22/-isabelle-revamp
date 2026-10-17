@@ -34,13 +34,20 @@ export function completionCandidates(entries: readonly SymbolEntry[], session: [
 }
 
 // Where the caret is: `opens` counts cartouches opened on the current line and
-// not yet closed, outside strings and comments.
-export interface Context { comment: boolean; string: boolean; opens: number }
+// not yet closed, outside strings and comments; `command` is the word before
+// the outermost cartouche that is still open, on any line, when there is one.
+export interface Context { comment: boolean; string: boolean; opens: number; command?: string }
+
+const wordChar = /[A-Za-z0-9_'.]/;
 
 export function scanContext(prefix: string): Context {
-  let comment = 0, string = false, opens = 0;
+  let comment = 0, string = false, opens = 0, depth = 0, command = '', word = '', wordStart = -1;
   for (let i = 0; i < prefix.length; i++) {
     const char = prefix[i];
+    if (!comment && !string) {
+      if (wordChar.test(char)) { if (wordStart < 0) wordStart = i; continue; }
+      if (wordStart >= 0) { if (depth === 0) word = prefix.slice(wordStart, i); wordStart = -1; }
+    }
     if (comment) {
       if (prefix.startsWith('(*', i)) { comment++; i++; }
       else if (prefix.startsWith('*)', i)) { comment--; i++; }
@@ -50,12 +57,17 @@ export function scanContext(prefix: string): Context {
     } else if (char === '\n') opens = 0;
     else if (prefix.startsWith('(*', i)) { comment = 1; i++; }
     else if (char === '"') string = true;
-    else if (char === '‹') opens++;
-    else if (char === '›') opens = Math.max(0, opens - 1);
-    else if (prefix.startsWith('\\<open>', i)) { opens++; i += 6; }
-    else if (prefix.startsWith('\\<close>', i)) { opens = Math.max(0, opens - 1); i += 7; }
+    else if (char === '‹' || prefix.startsWith('\\<open>', i)) {
+      if (depth++ === 0) command = word;
+      opens++;
+      if (char !== '‹') i += 6;
+    } else if (char === '›' || prefix.startsWith('\\<close>', i)) {
+      depth = Math.max(0, depth - 1);
+      opens = Math.max(0, opens - 1);
+      if (char !== '›') i += 7;
+    }
   }
-  return { comment: comment > 0, string, opens };
+  return { comment: comment > 0, string, opens, ...(depth > 0 ? { command } : {}) };
 }
 
 export interface Rewrite { start: number; end: number; from: string; text: string }
@@ -63,6 +75,10 @@ export interface Rewrite { start: number; end: number; from: string; text: strin
 const nameChar = /[A-Za-z0-9_^]/;
 // Controls take the next symbol as their argument, so any character ends them.
 const controlNames = new Set(['^sub', '^sup', '^bold', '^bsub', '^bsup', '^esub', '^esup']);
+// Commands whose cartouche holds ML or document text, where `\n` is an ML
+// escape and `\in` a LaTeX macro, never a symbol.
+const foreignCommands = new Set(['ML', 'ML_val', 'ML_prf', 'ML_command', 'ML_export', 'SML_file',
+  'text', 'txt', 'text_raw', 'chapter', 'section', 'subsection', 'subsubsection', 'paragraph', 'subparagraph']);
 // A cartouche shortcut starts a token: nothing, white space, a closing `>` of
 // an escape, or an opening bracket precedes it. `x<<y` and `x>>2` stay.
 const tokenStart = (text: string) => text === '' || /[\s>(\[{‹]$/.test(text);
@@ -71,7 +87,10 @@ const tokenStart = (text: string) => text === '' || /[\s>(\[{‹]$/.test(text);
 // (a character, an auto-closed pair, or a line break with its indentation).
 // Returns the replacement of the already typed source, if any:
 // - `\name` + terminator → `\<name>` when name is exactly a known symbol
-//   (for `\^sub`, `\^sup` and `\^bold` the argument itself is the terminator);
+//   (for `\^sub`, `\^sup` and `\^bold` the argument itself is the terminator),
+//   except for the one-letter bold alphabet (`\n`, `\t` are escapes), inside
+//   a string within a cartouche (an ML string) and inside the cartouche of an
+//   ML or document command (`\in` is LaTeX there);
 // - `<<` → `\<open>` at a token start;
 // - `>>` → `\<close>` when a cartouche is still open on the line, or at a
 //   token start outside a quoted string (`"x >> 2"` is never converted).
@@ -81,7 +100,9 @@ export function rewriteOnType(prefix: string, typed: string, known: (name: strin
   const at = prefix.length;
   const name = /\\([A-Za-z0-9_^]+)$/.exec(prefix);
   if (name && (!nameChar.test(typed[0]) || controlNames.has(name[1])) && known(name[1])) {
-    if (scanContext(prefix).comment) return;
+    const context = scanContext(prefix);
+    if (context.comment || name[1].length === 1) return;
+    if (context.command !== undefined && (context.string || foreignCommands.has(context.command))) return;
     return { start: at - name[0].length, end: at, from: name[0], text: `\\<${name[1]}>` };
   }
   const last = prefix.at(-1), before = prefix.slice(0, -1);

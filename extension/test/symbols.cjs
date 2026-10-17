@@ -111,6 +111,20 @@ exports.run = async function () {
     await type('x\\^sub');
     await type('1');
     await until('\\^sub + argument → \\<^sub>1', () => line(4).endsWith('x\\<^sub>1'));
+    // Not symbols: an ML string escape inside a cartouche and a LaTeX macro in prose.
+    const ml = 'ML \\<open>val s = "a';
+    await replace(source.replace('lemma "True"', ml));
+    await goto(4, ml.length);
+    await type('\\n"');
+    await pause(300);
+    assert(line(4).startsWith(ml + '\\n"') && !line(4).includes('\\<n>'), line(4));
+    const prose = 'text \\<open>We have $x ';
+    await replace(source.replace('lemma "True"', prose));
+    await goto(4, prose.length);
+    await type('\\in ');
+    await pause(300);
+    assert.equal(line(4), prose + '\\in ', 'LaTeX in prose stays');
+    console.log('PASS: "a\\n" in an ML cartouche and $x \\in in prose are left alone');
 
     // Item 11(b): the << and >> shortcuts, but never x >> 2 inside a formula.
     await replace(source.replace('lemma "True"', 'text '));
