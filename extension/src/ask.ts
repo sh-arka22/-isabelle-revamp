@@ -1,4 +1,5 @@
 import { ChildProcessWithoutNullStreams, spawn } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { StringDecoder } from 'node:string_decoder';
 
@@ -6,8 +7,13 @@ export interface AskEntry { id: number; kind: 'user' | 'assistant' | 'tool' | 'n
 export interface AskState { active: boolean; entries: AskEntry[] }
 export interface AskContext { file: string; line: number; cwd: string; portFile: string }
 export const registrationCommand = 'claude mcp add --transport stdio --scope local isabelle -- "$PWD/mcp/.venv/bin/python" "$PWD/mcp/server.py"';
-export function helpLine(missing: 'claude' | 'MCP'): string {
+export function helpLine(missing: 'claude' | 'MCP' | 'server'): string {
+  if (missing === 'server') return 'mcp/server.py was not found beside the extension or in the workspace folder. Open the isabelle-revamp checkout as the workspace.';
   return `${missing === 'claude' ? 'claude is not on PATH.' : 'The isabelle MCP server is not registered.'} From the repository root: ${registrationCommand}`;
+}
+/** The checkout holding mcp/: the extension's parent in a development host, else the open workspace folder (installed vsix). */
+export function serverRootFor(context: AskContext, extensionParent: string): string {
+  return [extensionParent, context.cwd].find(root => existsSync(join(root, 'mcp/server.py'))) ?? extensionParent;
 }
 const toolNames = ['open', 'edit', 'goals_at', 'errors', 'status', 'sorry_positions', 'processing_status'];
 
@@ -184,9 +190,11 @@ export class Ask {
       if (registration.code !== 0 || !/^isabelle:/m.test(registration.output)) {
         this.notice(helpLine('MCP')); return true;
       }
+      const serverRoot = serverRootFor(context, this.serverRoot);
+      if (!existsSync(join(serverRoot, 'mcp/server.py'))) { this.notice(helpLine('server')); return true; }
       const stream = new AskStream(this.add);
       const prompt = (history ? 'Earlier conversation (context only; read the current buffer again):\n' + history + '\n\n' : '') + 'User request:\n' + text.trim();
-      const result = await this.execute(claudeArgs(context, this.serverRoot), context, prompt, record => {
+      const result = await this.execute(claudeArgs(context, serverRoot), context, prompt, record => {
         let value;
         try { value = JSON.parse(record); } catch { throw new Error('Claude returned an invalid stream-json record.'); }
         stream.accept(value); this.publish();
