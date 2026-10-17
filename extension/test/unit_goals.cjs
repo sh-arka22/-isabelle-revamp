@@ -179,7 +179,24 @@ exports.run = function () {
   assert.equal(presentation({ phase: 'unfinished', text: 'goal', errors: [] }).badge, 'unfinished');
   assert.equal(presentation({ phase: 'ready', text: 'g', errors: [], checkStatus: 'checking' }).badge, 'checking');
   assert(goalsHtml({ phase: 'ready', text: '<script>alert(1)</script>', errors: [] }, 'n').includes('&lt;script&gt;'));
-  console.log('PASS: sanitised output, lines, facts, done state, messages, hostile input, links, and view model');
+  // Pins and pause in the view model.
+  const pin = { id: -3, uri: 'file:///w/Sqrt2.thy', theory: 'Sqrt2', position: { line: 11, character: 4 }, version: 2, stale: false,
+    text: done.text, goalHtml: 'goal', facts: content.facts };
+  const pinned = presentation({ ...state, pins: [pin, { ...pin, id: -4, stale: true, text: using.text, goalHtml: using.html }], paused: true });
+  assert.equal(pinned.status, 'paused');
+  assert.equal(pinned.badge, 'paused');
+  assert.equal(pinned.pinCount, 2);
+  assert(pinned.pinsHtml.includes('data-pin="-3"') && pinned.pinsHtml.includes('Sqrt2.thy:12'));
+  assert(pinned.pinsHtml.includes(doneBanner), 'a finished pinned step shows the banner');
+  assert(pinned.pinsHtml.includes('<span class="const">is_unit</span>'));
+  assert(pinned.actionsHtml.includes('>Resume<') && pinned.actionsHtml.includes('data-action="unpin-all"'));
+  assert.equal(presentation(state).status, 'fully checked', 'pins do not change the live status');
+  assert(presentation(state).actionsHtml.startsWith('<button type="button" class="link" data-action="pin"'));
+  assert(presentation({ phase: 'checking', text: '', errors: [] }).actionsHtml.includes(' disabled>Pin<'));
+  assert(presentation({ phase: 'ready', text: '', errors: [] }).actionsHtml.includes(' disabled>Pin<'), 'nothing to pin outside a proof');
+  assert(goalsHtml({ ...state, pins: [pin] }, 'n').indexOf('<div id="pins">') < goalsHtml({ ...state, pins: [pin] }, 'n').indexOf('id="goal-section"'));
+  assert(!goalsHtml({ ...state, pins: [{ ...pin, text: '<b>x</b>', goalHtml: '&lt;b&gt;x&lt;/b&gt;', theory: '<i>' }] }, 'n').includes('<i>.thy'));
+  console.log('PASS: sanitised output, lines, facts, done state, messages, hostile input, links, pins, pause and view model');
 };
 
 if (require.main === module) exports.run();

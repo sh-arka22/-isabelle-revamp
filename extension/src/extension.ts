@@ -1,9 +1,10 @@
 import { homedir } from 'node:os';
 import { resolve } from 'node:path';
-import { commands, ExtensionContext, Position, Selection, Uri, window, workspace } from 'vscode';
+import { commands, ExtensionContext, Position, Range, Selection, Uri, window, workspace } from 'vscode';
 import { LanguageClient, ServerOptions, State } from 'vscode-languageclient/node';
 import { Goals } from './goals';
 import { GoalsView } from './goalsView';
+import { proofEdit } from './insertProof';
 import { Bridge } from './bridge';
 import { BridgeTools } from './bridgeTools';
 import { loadSymbols, unicodeSymbols } from './symbols';
@@ -45,6 +46,41 @@ export async function activate(context: ExtensionContext) {
     void window.showTextDocument(Uri.file(link.path), { preserveFocus: false, selection: new Selection(position, position) });
   };
   view.onResize = columns => goals?.setMargin(columns);
+  const pinGoal = () => {
+    if (!goals?.pinGoal()) window.setStatusBarMessage('Isabelle: no goal to pin at the cursor yet', 3000);
+  };
+  const goToPin = (id: number) => {
+    const pin = goals?.pinned(id);
+    if (!pin) return;
+    const position = new Position(pin.position.line, pin.position.character);
+    void window.showTextDocument(Uri.parse(pin.uri), { preserveFocus: false, selection: new Selection(position, position) });
+  };
+  // A suggested proof goes in at the command the goals belong to, as jEdit's
+  // sendback does; the editor then gets the focus with the caret after it.
+  const insertProofText = async (text: string): Promise<boolean> => {
+    const caret = goals?.currentCaret();
+    const editor = window.visibleTextEditors.find(candidate => candidate.document.uri.toString() === caret?.uri) ?? visibleTheory();
+    if (!editor || editor.document.languageId !== 'isabelle') return false;
+    const line = caret && editor.document.uri.toString() === caret.uri ? caret.line : editor.selection.active.line;
+    const edit = proofEdit(editor.document, line, text);
+    if (!edit) return false;
+    const applied = await editor.edit(builder => builder.replace(
+      new Range(edit.startLine, edit.startCharacter, edit.endLine, edit.endCharacter), edit.text));
+    if (!applied) return false;
+    const lines = edit.text.split('\n');
+    const end = lines.length === 1 ? new Position(edit.startLine, edit.startCharacter + edit.text.length)
+      : new Position(edit.startLine + lines.length - 1, lines[lines.length - 1].length);
+    await window.showTextDocument(editor.document, { viewColumn: editor.viewColumn, selection: new Selection(end, end) });
+    return true;
+  };
+  view.onInsert = text => { void insertProofText(text); };
+  view.onAction = (action, data) => {
+    if (action === 'pin') pinGoal();
+    else if (action === 'pause') goals?.togglePause();
+    else if (action === 'unpin') goals?.unpin(Number(data.id));
+    else if (action === 'unpin-all') goals?.unpinAll();
+    else if (action === 'goto') goToPin(Number(data.id));
+  };
   context.subscriptions.push(output,
     window.registerWebviewViewProvider('isabelleRevamp.goals', view),
     commands.registerCommand('isabelleRevamp.showGoals', () =>
@@ -53,7 +89,10 @@ export async function activate(context: ExtensionContext) {
       view.focusAsk();
       await commands.executeCommand('isabelleRevamp.goals.focus');
       view.focusAsk();
-    }));
+    }),
+    commands.registerCommand('isabelleRevamp.pinGoal', pinGoal),
+    commands.registerCommand('isabelleRevamp.unpinAll', () => goals?.unpinAll()),
+    commands.registerCommand('isabelleRevamp.togglePauseGoals', () => goals?.togglePause()));
 
   const configured = workspace.getConfiguration('isabelleRevamp')
     .get<string>('executable', 'isabelle');
@@ -141,7 +180,7 @@ export async function activate(context: ExtensionContext) {
   return { getGoalState: () => view.snapshot(), getSwarmState: () => swarm.view.snapshot(),
     getPrettySymbols: () => window.activeTextEditor ? prettySymbols.snapshot(window.activeTextEditor) : [],
     getAskState: () => ask!.snapshot(), sendAsk, stopAsk: () => ask?.stop(),
-    setGoalsMargin: (columns: number) => goals?.setMargin(columns),
+    setGoalsMargin: (columns: number) => goals?.setMargin(columns), insertProofText,
     selectSwarmStep: (uri: string, version: number, id: string) => swarm.select(uri, version, id) };
 }
 

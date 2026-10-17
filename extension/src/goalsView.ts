@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { WebviewView, WebviewViewProvider } from 'vscode';
 import { AskState } from './ask';
+import { sendbackTexts } from './insertProof';
 import { MessageKind } from './outputHtml';
 import { escapeText } from './outputText';
 import { proofComplete } from './stateParts';
@@ -8,6 +9,13 @@ import { outputStyles, viewHeader, viewTheme } from './viewTheme';
 
 export interface GoalMessage { kind: MessageKind; text: string; html: string }
 export interface GoalFact { text: string; html: string }
+// A frozen server state panel (PIDE/state_auto_update enabled=false) and the
+// caret it was taken at. Its content never follows the caret or the text;
+// `stale` says the theory was edited after pinning.
+export interface GoalPin {
+  id: number; uri: string; theory: string; position: { line: number; character: number };
+  version: number; stale: boolean; text: string; goalHtml: string; facts: GoalFact[];
+}
 export interface GoalState {
   phase: 'idle' | 'checking' | 'ready' | 'unfinished' | 'error' | 'unavailable';
   text: string;
@@ -22,17 +30,33 @@ export interface GoalState {
   messages?: GoalMessage[];
   // Zero-based caret the state belongs to, like the MCP coordinates.
   position?: { line: number; character: number };
+  pins?: GoalPin[];
+  // The view keeps this state while the caret moves.
+  paused?: boolean;
 }
 
 export const doneBanner = '✓ No goals — this step is complete';
 export const notInProof = 'Not in a proof';
+export const pinNotice = 'Theory edited since pinned';
+
+function escapeAttribute(value: string): string {
+  return escapeText(value).replace(/"/g, '&quot;');
+}
 
 // Extension points. Both take trusted markup built by the caller, never
 // server content. Clicks on an element with `data-action` reach
-// GoalsView.onAction with the element's data-* fields.
+// GoalsView.onAction with the element's data-* fields; `insert` buttons
+// post their `data-text` to GoalsView.onInsert instead.
 export let headerActions = '';
 export function setHeaderActions(markup: string): void { headerActions = markup; }
-export let messageActions: (message: GoalMessage, index: number) => string = () => '';
+export function insertButtons(html: string): string {
+  return sendbackTexts(html).map(text => {
+    const label = text.replace(/\s+/g, ' ');
+    return `<button type="button" class="link insert" data-action="insert" data-text="${escapeAttribute(text)}" `
+      + `title="Insert into the theory at this command">Insert ‹${escapeText(label.length > 40 ? label.slice(0, 39) + '…' : label)}›</button>`;
+  }).join(' ');
+}
+export let messageActions: (message: GoalMessage, index: number) => string = message => insertButtons(message.html);
 export function setMessageActions(render: typeof messageActions): void { messageActions = render; }
 
 const messageLabels: Record<MessageKind, string> = { info: 'i', warning: '!', error: '✕', state: '' };
@@ -48,9 +72,31 @@ function factHtml(fact: GoalFact): string {
   return `<pre class="fact source">${fact.html}</pre>`;
 }
 
+export function pinTitle(pin: GoalPin): string {
+  return `${pin.theory}.thy:${pin.position.line + 1}`;
+}
+
+export function pinHtml(pin: GoalPin): string {
+  const done = proofComplete(pin.text);
+  return `<section class="panel pin" data-pin="${pin.id}" aria-label="Pinned goal">
+<h2 class="panel-title"><span class="count pinned">pinned</span><span class="pin-title">${escapeText(pinTitle(pin))}</span>
+<span class="pin-actions"><button type="button" class="link" data-action="goto" data-id="${pin.id}" title="Reveal the pinned position">Go to</button>
+<button type="button" class="link" data-action="unpin" data-id="${pin.id}">Unpin</button></span></h2>
+<p class="muted stale"${pin.stale ? '' : ' hidden'}>${pinNotice}</p>
+<div class="panel-body">${pin.facts.map(factHtml).join('')}${done ? `<p class="done" role="status">${doneBanner}</p>`
+    : `<pre class="source">${pin.goalHtml}</pre>`}</div></section>`;
+}
+
+function headerButtons(canPin: boolean, paused: boolean, pinCount: number): string {
+  return `<button type="button" class="link" data-action="pin" title="Keep this goal visible while editing elsewhere"${canPin ? '' : ' disabled'}>Pin</button>`
+    + ` <button type="button" class="link" data-action="pause" aria-pressed="${paused}" title="${paused ? 'Follow the cursor again' : 'Stop following the cursor'}">${paused ? 'Resume' : 'Pause'}</button>`
+    + (pinCount > 1 ? ` <button type="button" class="link" data-action="unpin-all">Unpin all</button>` : '');
+}
+
 export function presentation(state: GoalState) {
+  const paused = state.paused === true;
   const checking = state.phase === 'checking' || state.phase === 'ready' && state.checkStatus === 'checking';
-  const status = checking ? 'checking…' : {
+  const status = paused ? 'paused' : checking ? 'checking…' : {
     idle: 'Open a theory and place the cursor in a proof.',
     checking: 'checking…',
     ready: state.checkStatus === 'fully_checked' ? 'fully checked'
@@ -59,7 +105,7 @@ export function presentation(state: GoalState) {
     error: 'Proof error — see editor diagnostics.',
     unavailable: 'Goal state unavailable. Move the cursor to retry.',
   }[state.phase];
-  const badge = checking ? 'checking' : state.phase === 'error' ? 'error'
+  const badge = paused ? 'paused' : checking ? 'checking' : state.phase === 'error' ? 'error'
     : state.phase === 'unfinished' || state.checkStatus === 'unfinished' ? 'unfinished'
     : state.checkStatus === 'fully_checked' ? 'fully_checked' : state.phase;
   const settled = !checking && ['ready', 'unfinished', 'error'].includes(state.phase);
@@ -68,11 +114,14 @@ export function presentation(state: GoalState) {
   const text = checking ? '' : state.text;
   const done = settled && state.phase !== 'error' && proofComplete(text);
   const errors = checking ? '' : state.errors.join('\n\n');
+  const goalHtml = checking || done ? '' : state.goalHtml ?? escapeText(text);
+  const pins = state.pins ?? [];
   return {
-    theory: state.theory ?? 'Isabelle Goals', status, badge, phase: state.phase, text, errors,
+    theory: state.theory ?? 'Isabelle Goals', status, badge, phase: state.phase, text, errors, paused,
     position: state.theory && state.position
       ? `${state.theory}.thy:${state.position.line + 1}:${state.position.character + 1}` : '',
-    goalHtml: checking || done ? '' : state.goalHtml ?? escapeText(text),
+    goalHtml,
+    goalActionsHtml: insertButtons(goalHtml),
     done,
     empty: settled && state.phase !== 'error' && !text.trim() && !messages.length,
     factsHtml: facts.map(factHtml).join(''),
@@ -81,6 +130,9 @@ export function presentation(state: GoalState) {
     messageCount: messages.length,
     // Editor diagnostics are repeated only while no message carries them.
     showErrors: errors.length > 0 && !messages.some(message => message.kind === 'error'),
+    pinsHtml: pins.map(pinHtml).join(''),
+    pinCount: pins.length,
+    actionsHtml: headerButtons(settled && text.trim().length > 0, paused, pins.length) + headerActions,
   };
 }
 
@@ -106,6 +158,7 @@ ${outputStyles}
 .badge.fully_checked { background: var(--vscode-testing-iconPassed); color: var(--vscode-editor-background); }
 .badge.unfinished { background: var(--vscode-editorWarning-foreground); color: var(--vscode-editor-background); }
 .badge.error, .error .status { background: var(--vscode-errorForeground); color: var(--vscode-editor-background); }
+.badge.paused { background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); }
 .actions:empty { display: none; }
 .actions { margin-top: 6px; font-size: .9em; }
 .panel { margin-top: 10px; }
@@ -118,11 +171,17 @@ ${outputStyles}
 .count:empty { display: none; }
 .count { font-size: .85em; padding: 0 6px; border-radius: 8px;
   color: var(--vscode-badge-foreground); background: var(--vscode-badge-background); }
+.pin { border: 1px solid var(--vscode-panel-border); border-radius: 4px; padding: 6px 8px; }
+.pin .panel-title { font-weight: 600; flex-wrap: wrap; }
+.pin-title { font-family: var(--vscode-editor-font-family), monospace; font-weight: 400; }
+.pin-actions { margin-left: auto; font-weight: 400; font-size: .9em; white-space: nowrap; }
+.count.pinned { background: var(--vscode-button-background); color: var(--vscode-button-foreground); }
+.stale { font-size: .9em; }
 .done { margin: 4px 0; padding: 6px 10px; border-left: 4px solid var(--vscode-testing-iconPassed);
   color: var(--vscode-testing-iconPassed); font-weight: 600;
   background: color-mix(in srgb, var(--vscode-testing-iconPassed) 12%, transparent); }
 .muted { color: var(--vscode-descriptionForeground); margin: 4px 0; }
-#goal, .fact, .message pre { margin: 0; }
+#goal, .fact, .message pre, .pin pre { margin: 0; }
 .fact { padding: 2px 8px; border-left: 2px solid var(--vscode-descriptionForeground); margin: 4px 0; }
 .message { display: grid; grid-template-columns: auto 1fr; gap: 4px 8px; align-items: start; margin: 6px 0;
   padding: 6px 8px; border-left: 4px solid var(--vscode-descriptionForeground);
@@ -148,19 +207,23 @@ button { font: inherit; cursor: pointer; padding: 4px 10px; margin-top: 6px;
 button:disabled { opacity: .5; cursor: default; }
 button.link { padding: 0; margin: 0; background: none; color: var(--vscode-textLink-foreground); }
 button.link:hover { text-decoration: underline; }
+button.link[aria-pressed="true"] { font-weight: 600; }
+button.insert { font-family: var(--vscode-editor-font-family), monospace; font-size: .95em; margin-right: 8px; }
 #ask-status, .tool { color: var(--vscode-descriptionForeground); }
 #transcript { max-height: 40vh; overflow-y: auto; }
 #transcript p { white-space: pre-wrap; overflow-wrap: anywhere; margin: 8px 0; }
 #transcript .user { font-weight: 600; }
 #transcript .tool { font-family: var(--vscode-editor-font-family), monospace; font-size: .9em; }
 #transcript .notice { color: var(--vscode-editorWarning-foreground); }
-body.vscode-high-contrast .message, body.vscode-high-contrast-light .message,
+body.vscode-high-contrast .message, body.vscode-high-contrast-light .message, body.vscode-high-contrast .pin, body.vscode-high-contrast-light .pin,
 body.vscode-high-contrast .done, body.vscode-high-contrast-light .done { background: none; outline: 1px solid var(--vscode-contrastBorder); }
 </style></head><body class="${goal.phase}">
-${viewHeader(goal.theory, goal.status, headerActions, goal.position)}
+${viewHeader(goal.theory, goal.status, goal.actionsHtml, goal.position)}
+<div id="pins">${goal.pinsHtml}</div>
 ${section('goal', 'Goal', `<p id="done" class="done" role="status"${goal.done ? '' : ' hidden'}>${doneBanner}</p>
 <p id="empty" class="muted"${goal.empty ? '' : ' hidden'}>${notInProof}</p>
-<pre id="goal" class="source" aria-label="Goal at cursor">${goal.goalHtml}</pre>`, false)}
+<pre id="goal" class="source" aria-label="Goal at cursor">${goal.goalHtml}</pre>
+<div id="goal-actions" class="actions">${goal.goalActionsHtml}</div>`, false)}
 ${section('facts', 'Facts', `<div id="facts">${goal.factsHtml}</div>`, goal.factCount === 0, goal.factCount ? String(goal.factCount) : '')}
 ${section('messages', 'Messages', `<div id="messages">${goal.messagesHtml}</div>
 <pre id="errors" class="errors" aria-label="Diagnostics"${goal.showErrors ? '' : ' hidden'}>${escapeText(goal.errors)}</pre>`,
@@ -198,12 +261,13 @@ function setCollapsed(panel, collapsed) {
   const button = panel.querySelector('.disclosure');
   if (button) button.setAttribute('aria-expanded', String(!collapsed));
 }
-for (const panel of document.querySelectorAll('.panel')) setCollapsed(panel, !!saved.collapsed[panel.dataset.section]);
+for (const panel of document.querySelectorAll('[data-section]')) setCollapsed(panel, !!saved.collapsed[panel.dataset.section]);
 document.body.addEventListener('click', event => {
   const target = event.target;
   const link = target.closest('[data-link]');
   if (link) { vscode.postMessage({ type: 'open', link: link.dataset.link }); return; }
   const action = target.closest('[data-action]');
+  if (action && action.dataset.action === 'insert') { vscode.postMessage({ type: 'insert', text: action.dataset.text || '' }); return; }
   if (action) { vscode.postMessage({ type: 'action', action: action.dataset.action, data: Object.assign({}, action.dataset) }); return; }
   const disclosure = target.closest('.disclosure');
   if (!disclosure) return;
@@ -245,10 +309,14 @@ window.addEventListener('message', event => {
     const status = document.querySelector('.status');
     status.textContent = goal.status;
     status.className = 'status badge ' + goal.badge;
+    byId('header-actions').innerHTML = goal.actionsHtml;
     document.body.classList.toggle('error', goal.phase === 'error');
+    document.body.classList.toggle('paused', goal.paused);
+    byId('pins').innerHTML = goal.pinsHtml;
     byId('done').hidden = !goal.done;
     byId('empty').hidden = !goal.empty;
     byId('goal').innerHTML = goal.goalHtml;
+    byId('goal-actions').innerHTML = goal.goalActionsHtml;
     byId('facts').innerHTML = goal.factsHtml;
     byId('facts-count').textContent = goal.factCount ? String(goal.factCount) : '';
     byId('facts-section').hidden = goal.factCount === 0;
@@ -299,6 +367,7 @@ export class GoalsView implements WebviewViewProvider {
   onOpen?: (link: { path: string; line: number }) => void;
   onResize?: (columns: number) => void;
   onAction?: (action: string, data: Record<string, string>) => void;
+  onInsert?: (text: string) => void;
 
   resolveWebviewView(view: WebviewView): void {
     this.view = view;
@@ -311,6 +380,7 @@ export class GoalsView implements WebviewViewProvider {
       else if (message?.type === 'stop') this.onStop?.();
       else if (message?.type === 'open') { const link = parseLink(message.link); if (link) this.onOpen?.(link); }
       else if (message?.type === 'resize' && Number.isInteger(message.columns) && message.columns > 0) this.onResize?.(message.columns);
+      else if (message?.type === 'insert' && typeof message.text === 'string' && message.text.trim()) this.onInsert?.(message.text);
       else if (message?.type === 'action' && typeof message.action === 'string') {
         const data = Object.fromEntries(Object.entries(message.data ?? {})
           .filter((entry): entry is [string, string] => typeof entry[1] === 'string'));
@@ -337,6 +407,7 @@ export class GoalsView implements WebviewViewProvider {
   }
   snapshot(): GoalState {
     return { ...this.state, errors: [...this.state.errors],
-      facts: this.state.facts?.map(fact => ({ ...fact })), messages: this.state.messages?.map(message => ({ ...message })) };
+      facts: this.state.facts?.map(fact => ({ ...fact })), messages: this.state.messages?.map(message => ({ ...message })),
+      pins: this.state.pins?.map(pin => ({ ...pin, position: { ...pin.position }, facts: pin.facts.map(fact => ({ ...fact })) })) };
   }
 }

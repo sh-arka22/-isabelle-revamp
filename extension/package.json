@@ -25,8 +25,17 @@
       { "command": "isabelleRevamp.togglePrettySymbols", "title": "Isabelle: Toggle Pretty Symbols" },
       { "command": "isabelleRevamp.ask", "title": "Isabelle: Ask" },
       { "command": "isabelleRevamp.showGoals", "title": "Isabelle: Show Goals" },
+      { "command": "isabelleRevamp.pinGoal", "title": "Isabelle: Pin Goal", "icon": "$(pin)" },
+      { "command": "isabelleRevamp.unpinAll", "title": "Isabelle: Unpin All Goals", "icon": "$(pinned-dirty)" },
+      { "command": "isabelleRevamp.togglePauseGoals", "title": "Isabelle: Toggle Pause Goals", "icon": "$(debug-pause)" },
       { "command": "isabelleRevamp.showSwarm", "title": "Isabelle: Show Swarm" }
     ],
+    "menus": {
+      "view/title": [
+        { "command": "isabelleRevamp.pinGoal", "when": "view == isabelleRevamp.goals", "group": "navigation@1" },
+        { "command": "isabelleRevamp.togglePauseGoals", "when": "view == isabelleRevamp.goals", "group": "navigation@2" }
+      ]
+    },
     "languages": [{
       "id": "isabelle",
       "aliases": ["Isabelle", "Isar"],

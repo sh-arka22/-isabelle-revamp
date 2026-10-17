@@ -33,6 +33,18 @@ export async function loadSymbols(executable: string): Promise<{ path: string; c
   return { path, count: Object.keys(loaded).length };
 }
 
+// Unicode back to Isabelle's ASCII encoding, for text that goes into a theory
+// file (a suggested proof from the output). Script glyphs become control
+// symbols; the thin space after a sum is display-only.
+export function asciiSymbols(text: string): string {
+  const names = new Map<string, string>();
+  for (const [name, char] of Object.entries(symbols)) if (!names.has(char)) names.set(char, `\\<${name}>`);
+  const scripts = new Map<string, string>();
+  for (const [char, glyph] of Object.entries(superscripts)) scripts.set(glyph, `\\<^sup>${char}`);
+  for (const [char, glyph] of Object.entries(subscripts)) scripts.set(glyph, `\\<^sub>${char}`);
+  return [...text.replace(/\u2009/g, '')].map(char => scripts.get(char) ?? names.get(char) ?? char).join('');
+}
+
 export function unicodeSymbols(text: string): string {
   return text.replace(/\\<(\^?[A-Za-z][A-Za-z0-9_]*)>/g,
     (encoded, name: string) => Object.hasOwn(symbols, name) ? symbols[name] : encoded)

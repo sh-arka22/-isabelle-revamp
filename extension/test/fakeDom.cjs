@@ -3,6 +3,7 @@
 // no CSS; sizes are fixed numbers. No browser automation is involved.
 const vm = require('node:vm');
 const { tokenize } = require('../out/outputHtml');
+const { decodeEntities } = require('../out/outputText');
 
 class Element {
   constructor(tag = 'div') {
@@ -82,7 +83,7 @@ function build(html) {
     if (token.kind === 'text') { const text = new Element('#text'); text._text = token.value; top.appendChild(text); }
     else if (token.kind === 'open') {
       const element = new Element(token.name);
-      for (const [name, value] of Object.entries(token.attributes)) element.setAttribute(name, value);
+      for (const [name, value] of Object.entries(token.attributes)) element.setAttribute(name, decodeEntities(value));
       top.appendChild(element);
       if (!token.selfClosing && !['br', 'meta', 'input'].includes(token.name)) stack.push(element);
     } else if (token.kind === 'close') {

@@ -68,7 +68,11 @@ values were taken; the dark `keyword3` entry had a stray parenthesis and was
 corrected. The message backgrounds and underlines are from
 `Isabelle2025-2.app/etc/isabelle.css` (covered by the notice above). The
 sanitiser in `src/outputHtml.ts` is written here; the width report in the goals
-webview follows the approach of the official `extension/media/main.js`.
+webview follows the approach of the official `extension/media/main.js`. The
+placement rule of `proofEdit` in `src/insertProof.ts` (replace a following
+`sorry`/`oops`, else a new indented line) follows the shape of `proofEdit` in
+yfprojects' `src/sledgehammer_text.ts` and jEdit's `Isabelle.edit_command`;
+the code is written here.
 
 ```text
 BSD 3-Clause License

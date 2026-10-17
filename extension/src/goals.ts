@@ -1,7 +1,7 @@
 import { basename } from 'node:path';
 import { Diagnostic, DiagnosticSeverity, Disposable, EventEmitter, Range, TextDocument, TextEditor } from 'vscode';
 import { LanguageClient } from 'vscode-languageclient/node';
-import { GoalMessage, GoalsView, GoalState } from './goalsView';
+import { GoalMessage, GoalPin, GoalsView, GoalState } from './goalsView';
 import { splitMessages } from './outputHtml';
 import { StateContent, stateContent } from './stateParts';
 
@@ -9,6 +9,13 @@ interface Caret { uri: string; line: number; character: number; version: number 
 export type SourceRange = [number, number, number, number];
 interface Decoration { uri: string; entries: { type: string; content: { range: SourceRange }[] }[] }
 interface StateOutput { id: number; content: string }
+// A pinned goal: a server state panel kept with auto update disabled. It
+// then ignores caret moves and edits for good; `live` is false once the
+// server that owned it has gone.
+interface Pin {
+  id: number; uri: string; theory: string; position: { line: number; character: number };
+  version: number; stale: boolean; live: boolean; content: StateContent;
+}
 
 // PIDE/decoration messages are deltas: omitted entries retain their old value.
 const busyTypes = new Set([
@@ -21,6 +28,12 @@ const errorTypes = new Set(['text_overview_error']);
 // The server wraps output at this many characters (vscode_message_margin).
 const defaultMargin = 80;
 const noState: StateContent = { text: '', html: '', goalHtml: '', facts: [] };
+const idle: GoalState = { phase: 'idle', text: '', errors: [] };
+
+function pinState(pin: Pin): GoalPin {
+  return { id: pin.id, uri: pin.uri, theory: pin.theory, position: { ...pin.position }, version: pin.version,
+    stale: pin.stale, text: pin.content.text, goalHtml: pin.content.goalHtml, facts: pin.content.facts };
+}
 
 export class Goals implements Disposable {
   private updates = new EventEmitter<void>();
@@ -39,6 +52,10 @@ export class Goals implements Disposable {
   private earlyStates = new Map<number, StateContent>();
   private confirmed?: StateContent;
   private messages: GoalMessage[] = [];
+  private pins: Pin[] = [];
+  private paused = false;
+  private editor?: TextEditor;
+  private last: GoalState = idle;
   private margin = defaultMargin;
   private available = false;
   private requestedAt = 0;
@@ -56,6 +73,7 @@ export class Goals implements Disposable {
       // With editor_output_state=true the untagged dynamic output carries the
       // command's messages and, for a proof command, its state_message.
       client.onNotification('PIDE/dynamic_output', ({ content }: { content: string }) => {
+        if (this.frozen()) return;
         const messages = splitMessages(content);
         this.messages = messages.filter(message => message.kind !== 'state');
         // No state_message after this caret's update: the command has no proof
@@ -68,7 +86,9 @@ export class Goals implements Disposable {
       }),
       client.onNotification('PIDE/state_output', (message: StateOutput) => {
         const content = stateContent(message.content);
-        if (message.id === this.panel) this.acceptState(content);
+        const pin = this.pins.find(pin => pin.live && pin.id === message.id);
+        if (pin) { pin.content = content; pin.stale = false; this.republish(); this.updates.fire(); }
+        else if (message.id === this.panel) { if (!this.frozen()) this.acceptState(content); }
         else if (this.pending) this.earlyStates.set(message.id, content);
       }),
       client.onNotification('PIDE/decoration', (message: Decoration) => {
@@ -111,13 +131,21 @@ export class Goals implements Disposable {
     );
   }
 
+  // A (re)started server: whatever a paused view showed is gone with it.
   ready(editor?: TextEditor): void {
     this.available = true;
     this.caret = undefined;
-    this.follow(editor);
+    this.follow(editor, true);
   }
 
-  follow(editor?: TextEditor): void {
+  // While paused the caret is neither sent to the server nor shown; an MCP
+  // query passes `force` because it moved the cursor on purpose.
+  follow(editor?: TextEditor, force = false): void {
+    this.editor = editor;
+    if (this.paused && !force) {
+      if (editor?.document) this.observe(editor.document);
+      return;
+    }
     const document = editor?.document;
     this.document = document;
     if (document) this.observe(document);
@@ -152,6 +180,81 @@ export class Goals implements Disposable {
   private busy(): boolean {
     const flags = this.caret && this.decorations.get(this.caret.uri);
     return [...busyTypes].some(type => flags?.get(type));
+  }
+
+  // Paused with a state on show: live output no longer replaces it.
+  private frozen(): boolean {
+    return this.paused && this.confirmed !== undefined;
+  }
+
+  // Pin the goal on show. The live panel already holds the confirmed state
+  // for this caret, so it becomes the pin, frozen with auto update off, and a
+  // fresh live panel takes over the caret. Verified on Isabelle2025-2: a
+  // frozen panel ignores caret moves and edits, and PIDE/state_update would
+  // re-run it at the caret's command, so a pin is a snapshot that is only
+  // flagged stale after an edit (docs/PROTOCOL_NOTES.md, "Frozen state panels").
+  pinGoal(): GoalPin | undefined {
+    if (!this.caret || !this.document || this.panel === undefined || this.confirmed === undefined
+      || !this.confirmed.text.trim()) return undefined;
+    const id = this.panel;
+    this.panel = undefined;
+    void this.client.sendNotification('PIDE/state_auto_update', { id, enabled: false }).catch(() => {});
+    const pin: Pin = { id, uri: this.caret.uri, theory: basename(this.document.uri.fsPath, '.thy'),
+      position: { line: this.caret.line, character: this.caret.character }, version: this.caret.version,
+      stale: false, live: true, content: this.confirmed };
+    this.pins.push(pin);
+    this.requery();
+    this.republish();
+    this.updates.fire();
+    return pinState(pin);
+  }
+
+  // A new live panel for the unchanged caret; the confirmed state stays on show.
+  private requery(): void {
+    if (!this.caret) return;
+    const generation = ++this.generation;
+    const caret = this.caret;
+    clearTimeout(this.timer);
+    this.clearSettled();
+    this.timer = setTimeout(() => { void this.refresh(generation, caret); }, 0);
+  }
+
+  unpin(id: number): void {
+    const pin = this.pins.find(pin => pin.id === id);
+    if (!pin) return;
+    this.pins = this.pins.filter(other => other !== pin);
+    if (pin.live) void this.client.sendNotification('PIDE/state_exit', { id }).catch(() => {});
+    this.republish();
+    this.updates.fire();
+  }
+
+  unpinAll(): void {
+    for (const pin of [...this.pins]) this.unpin(pin.id);
+  }
+
+  pinned(id: number): GoalPin | undefined {
+    const pin = this.pins.find(pin => pin.id === id);
+    return pin && pinState(pin);
+  }
+
+  // Paused: the view keeps what it shows and stops following the caret.
+  togglePause(): boolean {
+    this.paused = !this.paused;
+    if (this.paused) this.republish();
+    else {
+      this.caret = undefined;
+      this.follow(this.editor);
+      if (!this.caret) this.publish(idle);
+    }
+    this.updates.fire();
+    return this.paused;
+  }
+
+  isPaused(): boolean { return this.paused; }
+
+  // The caret the goals on show belong to (not the editor's while paused).
+  currentCaret(): { uri: string; line: number; character: number } | undefined {
+    return this.caret && { uri: this.caret.uri, line: this.caret.line, character: this.caret.character };
   }
 
   // Identical dynamic output is not re-sent, so a second position without a
@@ -246,7 +349,7 @@ export class Goals implements Disposable {
     const busy = [...busyTypes].some(type => flags?.get(type));
     const errors = this.diagnostics.get(this.caret.uri) ?? [];
     const failed = errors.length > 0 || [...errorTypes].some(type => flags?.get(type));
-    if (busy || this.confirmed === undefined) {
+    if (this.confirmed === undefined || busy && !this.paused) {
       const phase = !busy && Date.now() - this.requestedAt >= 10000 ? 'unavailable' : 'checking';
       this.publish({ phase, text: '', errors: [] });
       return;
@@ -265,13 +368,20 @@ export class Goals implements Disposable {
   }
 
   private publish(state: GoalState): void {
+    this.last = state;
     const document = this.caret ? this.document : undefined;
     this.view.update({ ...state,
+      paused: this.paused,
+      pins: this.pins.map(pinState),
       // Isabelle theory files are named after their theory; no source parser is needed.
       theory: document ? basename(document.uri.fsPath, '.thy') : undefined,
       checkStatus: document ? this.documentStatus(document).state : undefined,
       position: this.caret ? { line: this.caret.line, character: this.caret.character } : undefined,
     });
+  }
+
+  private republish(): void {
+    this.publish(this.last);
   }
 
   unavailable(): void {
@@ -285,6 +395,8 @@ export class Goals implements Disposable {
     this.messages = [];
     this.confirmedVersions.clear();
     this.annotatedVersions.clear();
+    // The server's panels are gone; the pinned snapshots stay readable.
+    for (const pin of this.pins) pin.live = false;
     this.publish({ phase: 'unavailable', text: '', errors: [] });
     this.updates.fire();
   }
@@ -297,6 +409,9 @@ export class Goals implements Disposable {
       // Imports may depend on this file, so invalidate their cached completion too.
       this.confirmedVersions.clear();
       this.annotatedVersions.clear();
+      const edited = this.pins.filter(pin => pin.uri === uri && pin.version !== document.version && !pin.stale);
+      for (const pin of edited) pin.stale = true;
+      if (edited.length) this.republish();
       this.updates.fire();
     }
   }
@@ -355,6 +470,7 @@ export class Goals implements Disposable {
 
   dispose(): void {
     this.releasePanel();
+    this.unpinAll();
     this.unavailable();
     for (const subscription of this.subscriptions) subscription.dispose();
     this.updates.dispose();

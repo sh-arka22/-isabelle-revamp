@@ -2,7 +2,7 @@
 // HTML insertion, link clicks and the width report. No VS Code needed:
 //   node extension/test/unit_goalsView.cjs   (after npm run compile --prefix extension)
 const assert = require('node:assert/strict');
-const { goalsHtml, GoalsView, presentation } = require('../out/goalsView');
+const { goalsHtml, GoalsView, presentation, pinNotice } = require('../out/goalsView');
 const { mount } = require('./fakeDom.cjs');
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 // Values from the script's vm realm have foreign prototypes.
@@ -23,6 +23,13 @@ exports.run = async function () {
   assert.equal(byId('goal').textContent, 'goal (1 subgoal):\n 1. x', 'the initial page carries the sanitised goal');
   assert.equal(byId('goal').querySelector('.free').textContent, 'x');
   assert.equal(byId('position').textContent, 'Demo.thy:5:3');
+  // Header buttons: Pin is enabled for a settled goal, Pause is not pressed.
+  const pinButton = byId('header-actions').querySelector('[data-action]');
+  assert.equal(pinButton.dataset.action, 'pin');
+  assert.equal(pinButton.getAttribute('disabled'), null);
+  assert.equal(byId('header-actions').querySelectorAll('[data-action]')[1].getAttribute('aria-pressed'), 'false');
+  pinButton.dispatch('click');
+  assert.deepEqual(plain(posted.at(-1)), { type: 'action', action: 'pin', data: { action: 'pin' } });
 
   // Collapsing persists through the webview state alongside the draft.
   byId('goal-section').querySelector('.disclosure').dispatch('click');
@@ -54,6 +61,30 @@ exports.run = async function () {
   assert.equal(byId('messages-count').textContent, '2');
   assert(byId('errors').hidden, 'the error message already carries the diagnostic');
   assert(!byId('messages-section').hidden);
+  assert.equal(byId('pins').innerHTML, '');
+  assert.equal(byId('goal-actions').innerHTML, '');
+
+  // Pins and pause reach the page through the same update.
+  const pin = { id: -1, uri: 'file:///w/Sqrt2.thy', theory: 'Sqrt2', position: { line: 5, character: 2 }, version: 3, stale: false,
+    text: 'proof (prove)\ngoal (1 subgoal):\n 1. y * 1 = y', goalHtml: 'goal (1 subgoal):\n 1. <span class="free">y</span> * 1 = y', facts: [] };
+  receive({ type: 'goal', goal: presentation({ phase: 'checking', text: '', errors: [], theory: 'Sqrt2', position: { line: 0, character: 0 },
+    pins: [pin, { ...pin, id: -2, stale: true, facts: [{ text: 'a', html: '<span class="free">a</span>' }] }], paused: true }) });
+  assert(byId('pins').innerHTML.includes('data-pin="-1"') && byId('pins').innerHTML.includes('data-pin="-2"'));
+  assert(byId('pins').innerHTML.includes('Sqrt2.thy:6'));
+  assert(byId('pins').innerHTML.includes('<span class="free">y</span>'));
+  assert(byId('pins').innerHTML.includes('<p class="muted stale" hidden>' + pinNotice) && byId('pins').innerHTML.includes('<p class="muted stale">' + pinNotice));
+  assert(byId('pins').innerHTML.includes('<pre class="fact source"><span class="free">a</span></pre>'));
+  assert(byId('pins').innerHTML.includes('data-action="goto" data-id="-2"') && byId('pins').innerHTML.includes('data-action="unpin" data-id="-2"'));
+  assert.equal(document.querySelector('.status').textContent, 'paused');
+  assert.equal(document.querySelector('.status').className, 'status badge paused');
+  assert(document.body.classList.contains('paused'));
+  assert(byId('header-actions').innerHTML.includes('aria-pressed="true"') && byId('header-actions').innerHTML.includes('>Resume<'));
+  assert(byId('header-actions').innerHTML.includes('data-action="pin" title="Keep this goal visible while editing elsewhere" disabled>'), 'nothing to pin while checking');
+  assert(byId('header-actions').innerHTML.includes('data-action="unpin-all"'), 'Unpin all with two pins');
+  receive({ type: 'goal', goal: presentation({ phase: 'ready', text: 'g', errors: [], theory: 'Sqrt2', position: { line: 0, character: 0 }, pins: [pin] }) });
+  assert(!byId('header-actions').innerHTML.includes('data-action="unpin-all"') && byId('header-actions').innerHTML.includes('>Pause<'));
+  assert(!document.body.classList.contains('paused'));
+  assert(byId('pins').innerHTML.includes('data-pin="-1"') && !byId('pins').innerHTML.includes('data-pin="-2"'));
 
   // Not in a proof: empty sections hide, the grey note shows.
   receive({ type: 'goal', goal: presentation({ phase: 'ready', text: '', errors: [], theory: 'Sqrt2', position: { line: 0, character: 0 } }) });
@@ -73,10 +104,24 @@ exports.run = async function () {
   link.dispatch('click');
   assert.deepEqual(plain(posted.at(-1)), { type: 'open', link: 'file:/opt/Isabelle2025-2/src/HOL/Nat.thy#32' });
   const button = document.createElement('button');
-  button.setAttribute('data-action', 'insert'); button.setAttribute('data-text', 'by simp');
-  byId('messages').appendChild(button);
+  button.setAttribute('data-action', 'unpin'); button.setAttribute('data-id', '-1');
+  byId('pins').appendChild(button);
   button.dispatch('click');
-  assert.deepEqual(plain(posted.at(-1)), { type: 'action', action: 'insert', data: { action: 'insert', text: 'by simp' } });
+  assert.deepEqual(plain(posted.at(-1)), { type: 'action', action: 'unpin', data: { action: 'unpin', id: '-1' } });
+  // Insert buttons post their text alone; the initial page carries them from
+  // the sanitised message markup, quotes included.
+  const insertPage = mount(goalsHtml({ phase: 'ready', text: '', errors: [], theory: 'T', position: { line: 1, character: 0 },
+    messages: [{ kind: 'info', text: 'Try this: by (simp add: "a")', html: 'Try this: <span class="sendback">by (simp add: &quot;a&quot;)</span>' }],
+    pins: [pin] }, 'goalnonce'), 'goalnonce');
+  const insert = insertPage.document.getElementById('messages').querySelector('[data-action]');
+  assert.equal(insert.dataset.action, 'insert');
+  insert.dispatch('click');
+  assert.deepEqual(plain(insertPage.posted.at(-1)), { type: 'insert', text: 'by (simp add: "a")' });
+  assert.deepEqual(insertPage.document.querySelectorAll('[data-section]').map(panel => panel.dataset.section), ['goal', 'facts', 'messages', 'ask'],
+    'pins are not collapsible sections');
+  assert.equal(insertPage.document.querySelector('.pin-title').textContent, 'Sqrt2.thy:6');
+  insertPage.document.querySelector('.pin').querySelector('[data-action]').dispatch('click');
+  assert.deepEqual(plain(insertPage.posted.at(-1)), { type: 'action', action: 'goto', data: { action: 'goto', id: '-1' } });
 
   // The width report is debounced and sent once per distinct column count.
   await pause(400);
@@ -93,6 +138,7 @@ exports.run = async function () {
   view.onOpen = link => calls.push(['open', link]);
   view.onResize = columns => calls.push(['resize', columns]);
   view.onAction = (action, data) => calls.push(['action', action, data]);
+  view.onInsert = text => calls.push(['insert', text]);
   let inbound;
   view.resolveWebviewView({ webview: { onDidReceiveMessage(fn) { inbound = fn; return { dispose() {} }; }, postMessage: () => Promise.resolve(true) }, onDidDispose() {} });
   inbound({ type: 'open', link: 'file:/opt/Isabelle2025-2/src/HOL/Nat.thy#32' });
@@ -101,10 +147,19 @@ exports.run = async function () {
   inbound({ type: 'resize', columns: 72 });
   inbound({ type: 'resize', columns: -1 });
   inbound({ type: 'resize', columns: '72' });
-  inbound({ type: 'action', action: 'insert', data: { text: 'by simp', count: 3 } });
+  inbound({ type: 'action', action: 'unpin', data: { id: '-1', count: 3 } });
+  inbound({ type: 'insert', text: 'by simp' });
+  inbound({ type: 'insert', text: '   ' });
+  inbound({ type: 'insert', text: 5 });
   assert.deepEqual(calls, [['open', { path: '/opt/Isabelle2025-2/src/HOL/Nat.thy', line: 31 }], ['open', { path: '/x.thy', line: 0 }],
-    ['resize', 72], ['action', 'insert', { text: 'by simp' }]]);
-  console.log('PASS: goals webview sections, persisted collapse, sanitised updates, done/empty states, link and action messages, width report');
+    ['resize', 72], ['action', 'unpin', { id: '-1' }], ['insert', 'by simp']]);
+  assert.deepEqual(view.snapshot().pins, undefined);
+  view.update({ phase: 'ready', text: 'g', errors: [], pins: [pin], paused: true });
+  const snapshot = view.snapshot();
+  assert.deepEqual(snapshot.pins, [pin]);
+  assert.notEqual(snapshot.pins[0], pin, 'snapshots are copies');
+  assert.equal(snapshot.paused, true);
+  console.log('PASS: goals webview sections, persisted collapse, sanitised updates, done/empty states, pins, pause, link, action and insert messages, width report');
 };
 
 if (require.main === module) exports.run().catch(error => { console.error(error); process.exit(1); });
