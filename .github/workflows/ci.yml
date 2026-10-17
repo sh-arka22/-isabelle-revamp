@@ -1,0 +1,150 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read   # dorny/paths-filter lists PR files via the API
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  changes:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    outputs:
+      thys: ${{ steps.f.outputs.thys }}
+      component: ${{ steps.f.outputs.component }}
+      vscode: ${{ steps.f.outputs.vscode }}
+    steps:
+      - uses: actions/checkout@v7          # push events diff against the previous main commit via git
+      - id: f
+        uses: dorny/paths-filter@v4
+        with:
+          filters: |
+            shared: &shared
+              - '.isabelle-version'
+              - '.github/actions/setup-isabelle/**'
+              - '.github/workflows/ci.yml'
+            thys:
+              - *shared
+              - 'thys/**'
+            component:
+              - *shared
+              - 'component/**'
+            vscode:
+              - '.github/workflows/ci.yml'
+              - 'vscode/**'
+
+  lint:                                   # always runs, < 1 min
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - name: No leftover merge-conflict markers
+        run: |
+          if grep -rnE '^(<<<<<<<|>>>>>>>)( |$)' --exclude-dir=.git --exclude-dir=node_modules .; then exit 1; fi
+      - name: actionlint
+        run: |
+          bash <(curl -sSfL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.12/scripts/download-actionlint.bash) 1.7.12
+          ./actionlint -color
+      - name: No accidental sorry/oops in committed theories (warning only)
+        run: |
+          if grep -rnwE 'sorry|oops' --include='*.thy' thys 2>/dev/null; then
+            echo "::warning::theories contain sorry/oops (batch build rejects sorry unless quick_and_dirty)"
+          fi
+
+  vscode:
+    needs: changes
+    if: needs.changes.outputs.vscode == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    defaults:
+      run:
+        working-directory: vscode
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: vscode/package-lock.json
+      - run: npm ci
+      - run: npx tsc -p . --noEmit
+      - run: npx eslint .
+      - name: Extension tests (headless, xvfb is preinstalled on ubuntu-24.04)
+        run: xvfb-run -a npx vscode-test
+      - name: Package .vsix
+        run: npx vsce package --no-dependencies --skip-license --allow-missing-repository -o "isabelle-revamp-${GITHUB_SHA::7}.vsix"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: vsix
+          path: vscode/*.vsix
+          retention-days: 7
+
+  isabelle:
+    needs: changes
+    if: needs.changes.outputs.thys == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+      - id: isa
+        uses: ./.github/actions/setup-isabelle
+        with:
+          save-cache: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+      - name: Restore ancestor-session heaps (HOL-Library, ...)
+        id: heaps
+        uses: actions/cache/restore@v6
+        with:
+          path: ~/.isabelle/${{ steps.isa.outputs.version }}/heaps
+          key: heaps-${{ steps.isa.outputs.version }}-${{ hashFiles('thys/**/ROOT', 'thys/ROOTS') }}
+          restore-keys: heaps-${{ steps.isa.outputs.version }}-
+      - name: Build ancestor heaps only (-R = requirements of selected sessions)
+        run: isabelle build -b -R -D thys
+      - name: Save heaps (main only)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.heaps.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: ~/.isabelle/${{ steps.isa.outputs.version }}/heaps
+          key: heaps-${{ steps.isa.outputs.version }}-${{ hashFiles('thys/**/ROOT', 'thys/ROOTS') }}
+      - name: Check our sessions
+        run: isabelle build -v -D thys
+
+  component:
+    needs: changes
+    if: needs.changes.outputs.component == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-isabelle
+        with:
+          save-cache: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+      - name: Register component + compile Isabelle/Scala (bundled JDK + Scala, no setup-java)
+        run: |
+          isabelle components -u "$GITHUB_WORKSPACE/component"
+          isabelle components -l | tail -n 5
+          isabelle scala_build
+      - name: Smoke test (our Isabelle_Scala_Tools service is registered and runs)
+        run: isabelle revamp_hello        # replace with a cheap subcommand of your tool, e.g. `isabelle revamp_beam -h`
+
+  ci-ok:                                  # the ONLY required status check
+    if: always()
+    needs: [changes, lint, vscode, isabelle, component]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - name: All jobs succeeded or were skipped by path filter
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+          BAD: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
+        run: |
+          echo "$NEEDS"
+          test "$BAD" = "false"

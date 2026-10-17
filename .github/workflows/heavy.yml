@@ -1,0 +1,64 @@
+name: heavy   # optional, never a required check
+
+on:
+  pull_request:
+    types: [labeled, synchronize]
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 */3 * * *"   # every 3h on main; scheduled runs can be delayed under load
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: heavy-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  big-sessions:
+    # On PRs only when someone adds the `full-ci` label
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'full-ci')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7
+      - id: isa
+        uses: ./.github/actions/setup-isabelle
+        with:
+          save-cache: ${{ github.event_name != 'pull_request' }}
+      - id: heaps
+        uses: actions/cache/restore@v6
+        with:
+          path: ~/.isabelle/${{ steps.isa.outputs.version }}/heaps
+          key: heavy-heaps-${{ steps.isa.outputs.version }}-${{ hashFiles('heavy/**/ROOT') }}
+          restore-keys: heavy-heaps-${{ steps.isa.outputs.version }}-
+      - name: Build e.g. HOL-Analysis-based real-analysis speed-run
+        run: isabelle build -b -v -D heavy
+      - if: github.event_name != 'pull_request' && steps.heaps.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: ~/.isabelle/${{ steps.isa.outputs.version }}/heaps
+          key: heavy-heaps-${{ steps.isa.outputs.version }}-${{ hashFiles('heavy/**/ROOT') }}
+
+  vscode-e2e:
+    # real prover + real VS Code: extension spawns `isabelle vscode_server`
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'full-ci')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - id: isa
+        uses: ./.github/actions/setup-isabelle
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: vscode/package-lock.json
+      - working-directory: vscode
+        run: npm ci
+      - working-directory: vscode
+        env:
+          ISABELLE_HOME: ${{ steps.isa.outputs.home }}   # read by the extension's test config, not by isabelle itself
+        run: xvfb-run -a npx vscode-test --label e2e

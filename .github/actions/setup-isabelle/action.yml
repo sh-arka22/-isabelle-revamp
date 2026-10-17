@@ -1,0 +1,74 @@
+name: Setup Isabelle
+description: >
+  Download the Isabelle Linux bundle (cached), which already ships prebuilt Pure + HOL heaps,
+  and put `isabelle` on PATH. Version comes from the `version` input or the repo's .isabelle-version file.
+inputs:
+  version:
+    description: "e.g. Isabelle2026-RC4, Isabelle2026, Isabelle2025-2 (empty = read .isabelle-version)"
+    required: false
+    default: ""
+  save-cache:
+    description: "'true' only on trusted pushes to main, so PRs restore one shared copy instead of each saving its own"
+    required: false
+    default: "false"
+outputs:
+  version:
+    description: Resolved Isabelle version string
+    value: ${{ steps.ver.outputs.version }}
+  home:
+    description: Isabelle distribution directory
+    value: ${{ steps.ver.outputs.dir }}
+runs:
+  using: composite
+  steps:
+    - id: ver
+      shell: bash
+      run: |
+        v="${{ inputs.version }}"
+        if [ -z "$v" ]; then v="$(tr -d '[:space:]' < .isabelle-version)"; fi
+        case "$v" in
+          # release candidates live under website-<RC>/dist (HTTPS, verified 200 for RC4)
+          *-RC*) urls="https://isabelle.in.tum.de/website-$v/dist/${v}_linux.tar.gz" ;;
+          # releases: NOT https://isabelle.in.tum.de/dist (it 301s to plain http); go to the target host + Cambridge mirror
+          *)     urls="https://dist.isabelle.cit.tum.de/dist/${v}_linux.tar.gz?token=Isabelle https://www.cl.cam.ac.uk/research/hvg/Isabelle/dist/${v}_linux.tar.gz" ;;
+        esac
+        {
+          echo "version=$v"
+          echo "urls=$urls"
+          echo "dir=$HOME/isabelle-dist/$v"
+        } >> "$GITHUB_OUTPUT"
+
+    - id: restore
+      uses: actions/cache/restore@v6
+      with:
+        path: ~/isabelle-dist/${{ steps.ver.outputs.version }}
+        key: isabelle-dist-${{ runner.os }}-${{ runner.arch }}-${{ steps.ver.outputs.version }}
+
+    - name: Download + unpack Isabelle (cache miss only)
+      if: steps.restore.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        set -euo pipefail
+        mkdir -p "$HOME/isabelle-dist"
+        ok=
+        for u in ${{ steps.ver.outputs.urls }}; do
+          if curl -fL --retry 3 --retry-delay 10 --connect-timeout 30 -o "$RUNNER_TEMP/isabelle.tar.gz" "$u"; then ok=1; break; fi
+          echo "::warning::download failed from $u, trying next mirror"
+        done
+        test -n "$ok"
+        tar -xzf "$RUNNER_TEMP/isabelle.tar.gz" -C "$HOME/isabelle-dist"
+        rm -f "$RUNNER_TEMP/isabelle.tar.gz"
+        # Release/RC bundles ship prebuilt Pure+HOL heaps; fail loudly if that ever changes.
+        ls -la "${{ steps.ver.outputs.dir }}"/heaps/*/HOL
+
+    - if: inputs.save-cache == 'true' && steps.restore.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v6
+      with:
+        path: ~/isabelle-dist/${{ steps.ver.outputs.version }}
+        key: isabelle-dist-${{ runner.os }}-${{ runner.arch }}-${{ steps.ver.outputs.version }}
+
+    - name: Put isabelle on PATH
+      shell: bash
+      run: |
+        echo "${{ steps.ver.outputs.dir }}/bin" >> "$GITHUB_PATH"
+        "${{ steps.ver.outputs.dir }}/bin/isabelle" version
