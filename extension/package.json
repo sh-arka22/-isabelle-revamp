@@ -51,6 +51,18 @@
           "type": "boolean", "default": true,
           "description": "Display ASCII Isabelle symbols as mathematics; reveal source at the cursor. Does not change the file or source coordinates."
         },
+        "isabelleRevamp.decorations.semanticColours": {
+          "type": "boolean", "default": true,
+          "description": "Colour free, bound and type variables, keywords, numerals and comments with Isabelle's own markup colours, as jEdit does, wherever the server has checked the text. The grammar colours the rest."
+        },
+        "isabelleRevamp.decorations.processingBackground": {
+          "type": "boolean", "default": true,
+          "description": "Shade the commands Isabelle has not yet checked or is still running. Failed and admitted commands keep their red shade."
+        },
+        "isabelleRevamp.decorations.theoremMarks": {
+          "type": "boolean", "default": true,
+          "description": "Mark every theorem in the gutter: a double tick once proved, a warning sign when admitted with sorry or oops, a cross on an error, a dotted circle while checking."
+        },
         "isabelleRevamp.executable": {
           "type": "string",
           "default": "isabelle",

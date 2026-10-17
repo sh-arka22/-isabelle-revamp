@@ -6,6 +6,9 @@ import { Goals } from './goals';
 import { GoalsView } from './goalsView';
 import { Bridge } from './bridge';
 import { BridgeTools } from './bridgeTools';
+import { Decorations } from './decorations';
+import { registerOutline } from './outline';
+import { TheoremGutter } from './theoremGutter';
 import { loadSymbols, unicodeSymbols } from './symbols';
 import { PrettySymbols } from './prettySymbols';
 import { Swarm } from './swarm';
@@ -82,6 +85,9 @@ export async function activate(context: ExtensionContext) {
     },
   });
   goals = new Goals(client, view);
+  const decorations = new Decorations(goals);
+  const theoremGutter = new TheoremGutter(goals);
+  context.subscriptions.push(decorations, theoremGutter, ...registerOutline());
   const swarm = new Swarm(goals);
   context.subscriptions.push(swarm,
     window.registerWebviewViewProvider('isabelleRevamp.swarm', swarm.view),
@@ -131,6 +137,8 @@ export async function activate(context: ExtensionContext) {
   return { getGoalState: () => view.snapshot(), getSwarmState: () => swarm.view.snapshot(),
     getPrettySymbols: () => window.activeTextEditor ? prettySymbols.snapshot(window.activeTextEditor) : [],
     getAskState: () => ask!.snapshot(), sendAsk, stopAsk: () => ask?.stop(),
+    getEditorDecorations: () => decorations.snapshot(window.activeTextEditor),
+    getTheoremStatuses: () => theoremGutter.statuses(window.activeTextEditor),
     selectSwarmStep: (uri: string, version: number, id: string) => swarm.select(uri, version, id) };
 }
 
